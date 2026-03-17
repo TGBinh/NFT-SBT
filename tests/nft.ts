@@ -582,4 +582,110 @@ describe("nft_program", () => {
       }
     });
   });
+
+  describe("use_rwa", () => {
+    const challengeId = toId("challenge-use-test");
+    const mint = Keypair.generate();
+
+    before(async () => {
+      // Mint an RWA so we have something to use
+      const rwaIssuance = deriveRwaIssuance(
+        challengeId,
+        authority.publicKey,
+        program.programId
+      );
+      const rwaRecord = deriveRwaRecord(mint.publicKey, program.programId);
+      const tokenAccount = await getAssociatedTokenAddress(
+        mint.publicKey,
+        authority.publicKey
+      );
+      const metadata = deriveMetadata(mint.publicKey);
+      const masterEdition = deriveMasterEdition(mint.publicKey);
+
+      await program.methods
+        .mintRwa(
+          "RWA Use Test",
+          "RWA",
+          "https://example.com/rwa-use.json",
+          0,
+          challengeId
+        )
+        .accounts({
+          nftConfig: deriveNftConfig(CollectionType.Rwa, program.programId),
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+          recipient: authority.publicKey,
+          rwaIssuance,
+          rwaRecord,
+          mint: mint.publicKey,
+          tokenAccount,
+          metadata,
+          masterEdition,
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([authority, mint])
+        .rpc();
+    });
+
+    it("marks rwa as used", async () => {
+      const rwaRecord = deriveRwaRecord(mint.publicKey, program.programId);
+      const userAta = await getAssociatedTokenAddress(
+        mint.publicKey,
+        authority.publicKey
+      );
+
+      await program.methods
+        .useRwa()
+        .accounts({
+          rwaRecord,
+          mint: mint.publicKey,
+          userTokenAccount: userAta,
+          user: authority.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([authority])
+        .rpc();
+
+      const record = await program.account.rwaRecord.fetch(rwaRecord);
+      assert.ok(record.isUsed, "isUsed should be true");
+      assert.ok(record.usedAt.toNumber() > 0, "usedAt should be set");
+    });
+
+    it("rejects double use", async () => {
+      const rwaRecord = deriveRwaRecord(mint.publicKey, program.programId);
+      const userAta = await getAssociatedTokenAddress(
+        mint.publicKey,
+        authority.publicKey
+      );
+
+      try {
+        await program.methods
+          .useRwa()
+          .accounts({
+            rwaRecord,
+            mint: mint.publicKey,
+            userTokenAccount: userAta,
+            user: authority.publicKey,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([authority])
+          .rpc();
+        assert.fail("Should have thrown AlreadyUsed");
+      } catch (e: any) {
+        assert.ok(
+          e.message.includes("AlreadyUsed") ||
+            e.error?.errorCode?.code === "AlreadyUsed",
+          `Expected AlreadyUsed, got: ${e.message}`
+        );
+      }
+    });
+  });
 });

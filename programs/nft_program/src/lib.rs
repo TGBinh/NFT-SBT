@@ -52,4 +52,8 @@ pub mod nft_program {
     ) -> Result<()> {
         instructions::mint_stamp::handler(ctx, checkpoint_index, name, symbol, royalty)
     }
+
+    pub fn use_rwa(ctx: Context<UseRwa>) -> Result<()> {
+        instructions::use_rwa::handler(ctx)
+    }
 }
