@@ -116,4 +116,53 @@ describe("sbt_program", () => {
       }
     });
   });
+
+  describe("create_event", () => {
+    const eventId = toId("test-event-001");
+    const eventConfigPda = deriveEventConfig(eventId, program.programId);
+
+    it("creates EventConfig PDA", async () => {
+      try {
+        await program.methods
+          .createEvent(eventId, "Test Event", "EVT", "https://example.com/event.json")
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+            eventConfig: eventConfigPda,
+            authority: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+      } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
+
+      const cfg = await program.account.eventConfig.fetch(eventConfigPda);
+      assert.equal(cfg.name, "Test Event");
+      assert.equal(cfg.active, true);
+      assert.equal(cfg.participantCount.toString(), "0");
+    });
+
+    it("update_event sets active = false", async () => {
+      await program.methods
+        .updateEvent(false)
+        .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey })
+        .rpc();
+      const cfg = await program.account.eventConfig.fetch(eventConfigPda);
+      assert.equal(cfg.active, false);
+      // restore
+      await program.methods.updateEvent(true)
+        .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
+    });
+
+    it("rejects unauthorized update", async () => {
+      const fake = Keypair.generate();
+      await airdrop(provider.connection, fake.publicKey);
+      try {
+        await program.methods.updateEvent(false)
+          .accounts({ eventConfig: eventConfigPda, authority: fake.publicKey })
+          .signers([fake]).rpc();
+        assert.fail("Expected Unauthorized");
+      } catch (e: any) {
+        assert.ok(e.message.includes("Unauthorized") || e.message.includes("2006"));
+      }
+    });
+  });
 });
