@@ -1,0 +1,41 @@
+# Anchor build
+target/
+**/target/
+
+# Rust
+Cargo.lock
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+
+# Anchor test
+test-ledger/
+
+# Solana keypairs
+*.json
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log
+
+# Env
+.env
+
+# VSCode
+.vscode/
+
+# Jetbrains
+.idea/
+
+# Typescript build
+dist/
+build/
+
+# Coverage
+coverage/

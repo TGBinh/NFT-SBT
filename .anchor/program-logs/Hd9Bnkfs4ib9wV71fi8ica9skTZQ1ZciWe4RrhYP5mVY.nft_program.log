@@ -1,0 +1,132 @@
+Streaming transaction logs mentioning Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY. Confirmed commitment
+Transaction executed in slot 41:
+  Signature: 2vh5CbKE9qPmzvkkxSp86ZiFBRFuJVejnAExNswfLijY9dwqapTw4erjthRe4xzq9FpttryPGfzhq8SN7Uz8xM4W
+  Status: Ok
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: InitializeConfig
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program log: NFT Config initialized. Authority: CLvQ6mq4VCr25s5t9Xp9128Ayw8L3ScU89qv3MCSjyW7
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 9901 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY success
+Transaction executed in slot 42:
+  Signature: 2vh5CbKE9qPmzvkkxSp86ZiFBRFuJVejnAExNswfLijY9dwqapTw4erjthRe4xzq9FpttryPGfzhq8SN7Uz8xM4W
+  Status: Ok
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: InitializeConfig
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program log: NFT Config initialized. Authority: CLvQ6mq4VCr25s5t9Xp9128Ayw8L3ScU89qv3MCSjyW7
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 9901 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY success
+Transaction executed in slot 42:
+  Signature: 4vAuwj4aphb3vp1Ey21azXYVJGZvuJbHjcy31Jfz7gsUoQeCdHcabNLFT1xh76tkhaTWNUMsxMzFLr54z4jf5wXZ
+  Status: Error processing Instruction 0: custom program error: 0x0
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: InitializeConfig
+    Program 11111111111111111111111111111111 invoke [2]
+    Allocate: account Address { address: FLS8EQcjvGx3DyFr32nkZGZw6dK5f9ZdcYH789n86LRf, base: None } already in use
+    Program 11111111111111111111111111111111 failed: custom program error: 0x0
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 6210 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY failed: custom program error: 0x0
+Transaction executed in slot 43:
+  Signature: 2hb7Fbvszkzn7VcA1fP56QFkpHgzwuLPDUQxXJ7P78UJzmRkUdrSaRiDjcUfjXQn2838wMUhseRrgPtXtrtzmAHL
+  Status: Error processing Instruction 0: custom program error: 0xbc4
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: TransferNft
+    Program log: AnchorError caused by account: mint. Error Code: AccountNotInitialized. Error Number: 3012. Error Message: The program expected this account to be already initialized.
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 4223 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY failed: custom program error: 0xbc4
+Transaction executed in slot 43:
+  Signature: 2hb7Fbvszkzn7VcA1fP56QFkpHgzwuLPDUQxXJ7P78UJzmRkUdrSaRiDjcUfjXQn2838wMUhseRrgPtXtrtzmAHL
+  Status: Error processing Instruction 0: custom program error: 0xbc4
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: TransferNft
+    Program log: AnchorError caused by account: mint. Error Code: AccountNotInitialized. Error Number: 3012. Error Message: The program expected this account to be already initialized.
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 4223 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY failed: custom program error: 0xbc4
+Transaction executed in slot 44:
+  Signature: 2ZDQQecvb9Eik7wsXBKx3Nz6roP2vk7A4ixQus6RWdRW77FKFnptxV7zCVoF5jt4NwXXJhgwExj5hLyozQZZ8J6q
+  Status: Error processing Instruction 0: Unsupported program id
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: MintNft
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+    Program log: Instruction: InitializeMint2
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 2828 of 191093 compute units
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]
+    Program log: Create
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]
+    Program log: Instruction: GetAccountDataSize
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1622 of 171734 compute units
+    Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program 11111111111111111111111111111111 invoke [3]
+    Program 11111111111111111111111111111111 success
+    Program log: Initialize the associated token account
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]
+    Program log: Instruction: InitializeImmutableOwner
+    Program log: Please upgrade to SPL Token 2022 for immutable owner support
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 165202 compute units
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]
+    Program log: Instruction: InitializeAccount3
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4241 of 161371 compute units
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 23329 of 180155 compute units
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+    Program log: Instruction: MintTo
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4538 of 147546 compute units
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 59921 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY failed: Unsupported program id
+Transaction executed in slot 44:
+  Signature: Y3cwo2BTZhmkRKcjoM1VrXLdQiRMTXfAHFZuFdp5ahqeeDZcHbgtryQuMSgbrYoJ88grTE4hu4YSjGrt1Jv9yeL
+  Status: Ok
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: UpdateAuthority
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 3072 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY success
+Transaction executed in slot 45:
+  Signature: Y3cwo2BTZhmkRKcjoM1VrXLdQiRMTXfAHFZuFdp5ahqeeDZcHbgtryQuMSgbrYoJ88grTE4hu4YSjGrt1Jv9yeL
+  Status: Ok
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: UpdateAuthority
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 3072 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY success
+Transaction executed in slot 46:
+  Signature: 3PWeCDYk91YzjtuXczKU6DBjBbZ6CYuoJTrkprNNjKsMgraLkHUbTZS3iP99gs2XNRCGQ7UKVFAnPh8wEjKVCrww
+  Status: Ok
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: UpdateAuthority
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 3072 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY success
+Transaction executed in slot 47:
+  Signature: 3PWeCDYk91YzjtuXczKU6DBjBbZ6CYuoJTrkprNNjKsMgraLkHUbTZS3iP99gs2XNRCGQ7UKVFAnPh8wEjKVCrww
+  Status: Ok
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: UpdateAuthority
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 3072 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY success
+Transaction executed in slot 47:
+  Signature: 3Jd9yR9XErB7xACPZ56DChL4cC3yLDHYWxsMYsSZAcZpbwvxHdwR5cPipGLxiokdDu7xWqwNzJtcVBMrRc2taoDR
+  Status: Error processing Instruction 0: custom program error: 0x1774
+  Log Messages:
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY invoke [1]
+    Program log: Instruction: UpdateAuthority
+    Program log: AnchorError caused by account: config. Error Code: Unauthorized. Error Number: 6004. Error Message: Only the program authority can perform this action.
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY consumed 4083 of 200000 compute units
+    Program Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY failed: custom program error: 0x1774

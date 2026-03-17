@@ -1,0 +1,30 @@
+{
+  "name": "solana-token-project",
+  "version": "0.1.0",
+  "description": "Solana NFT and SBT programs using Anchor + Metaplex",
+  "scripts": {
+    "test": "anchor test",
+    "build": "anchor build",
+    "deploy": "ts-node scripts/deploy.ts",
+    "mint:nft": "ts-node scripts/mint-nft.ts",
+    "mint:sbt": "ts-node scripts/mint-sbt.ts",
+    "lint": "eslint tests scripts --ext .ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.32.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
+    "@solana/spl-token": "^0.4.6",
+    "@solana/web3.js": "^1.95.3"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.5",
+    "chai": "^4.3.10",
+    "mocha": "^10.2.0",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

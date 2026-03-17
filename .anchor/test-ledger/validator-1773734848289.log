@@ -1,0 +1,54 @@
+[2026-03-17T08:07:28.289474814Z INFO  solana_test_validator] agave-validator 3.1.10 (src:7bc9c805; feat:1620780344, client:Agave)
+[2026-03-17T08:07:28.289493782Z INFO  solana_test_validator] Starting validator with: ArgsOs {
+        inner: [
+            "solana-test-validator",
+            "--ledger",
+            ".anchor/test-ledger",
+            "--mint",
+            "CLvQ6mq4VCr25s5t9Xp9128Ayw8L3ScU89qv3MCSjyW7",
+            "--bpf-program",
+            "51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH",
+            "/home/ubuntu/Desktop/Solana-tokens/target/deploy/sbt_program.so",
+            "--bpf-program",
+            "Hd9Bnkfs4ib9wV71fi8ica9skTZQ1ZciWe4RrhYP5mVY",
+            "/home/ubuntu/Desktop/Solana-tokens/target/deploy/nft_program.so",
+            "--bind-address",
+            "0.0.0.0",
+            "--clone-upgradeable-program",
+            "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+            "--rpc-port",
+            "8899",
+            "--url",
+            "https://api.devnet.solana.com",
+        ],
+    }
+[2026-03-17T08:07:28.289508252Z WARN  solana_perf] CUDA is disabled
+[2026-03-17T08:07:28.289511935Z INFO  solana_perf] AVX detected
+[2026-03-17T08:07:28.289513125Z INFO  solana_perf] AVX2 detected
+[2026-03-17T08:07:28.291935543Z INFO  solana_faucet::faucet] Faucet started. Listening on: 0.0.0.0:9900
+[2026-03-17T08:07:28.291951889Z INFO  solana_faucet::faucet] Faucet account address: pNVjTQip2dr5vRHZLM8VMg9JdFG3LQWTCi9GE55A1A6
+[2026-03-17T08:07:28.292066163Z INFO  solana_test_validator] Fetching [metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s] over RPC...
+[2026-03-17T08:07:28.292139193Z INFO  agave_validator::admin_rpc_service] started admin rpc service!
+[2026-03-17T08:07:28.480601645Z INFO  solana_test_validator] Fetching [PwDiXFxQsGra4sFFTT8r1QWRMd4vfumiWC1jfWNfdYT] over RPC...
+[2026-03-17T08:07:28.776677880Z INFO  solana_test_validator] Feature for mustRekeyVm2QHYB3JPefBiU4BY3Z6JkW2k3Scw5GWP deactivated
+[2026-03-17T08:07:28.780408989Z INFO  solana_ledger::blockstore] Opening blockstore at ".anchor/test-ledger/rocksdb"
+[2026-03-17T08:07:28.780566853Z WARN  solana_ledger::blockstore_db] Unable to detect Rocks columns: Error { message: "IO error: No such file or directory: While opening a file for sequentially reading: .anchor/test-ledger/rocksdb/CURRENT: No such file or directory" }
+[2026-03-17T08:07:29.013585970Z INFO  solana_ledger::blockstore] Opening blockstore done; blockstore open took 233ms
+[2026-03-17T08:07:29.016934143Z INFO  solana_metrics::metrics] metrics disabled: environment variable not found
+[2026-03-17T08:07:29.016993134Z INFO  solana_metrics::metrics] datapoint: shred_insert_is_full slot=0i total_time_ms=0i last_index=31i num_repaired=0i num_recovered=0i
+[2026-03-17T08:07:29.270843453Z INFO  agave_snapshots::unarchive] Extracting ".anchor/test-ledger/genesis.tar.bz2"...
+[2026-03-17T08:07:29.270899446Z INFO  agave_io_uring] io_uring supported
+[2026-03-17T08:07:29.330799511Z INFO  agave_snapshots::hardened_unpack] unpacked 1 entries total
+[2026-03-17T08:07:29.330811487Z INFO  agave_snapshots::unarchive] Extracted ".anchor/test-ledger/genesis.tar.bz2" in 59.957833ms
+
+thread 'main' panicked at gossip/src/node.rs:297:59:
+called `Result::unwrap()` on an `Err` value: UnspecifiedIpAddr(0.0.0.0)
+stack backtrace:
+   0: rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::result::unwrap_failed
+   3: solana_gossip::node::Node::new_with_external_ip
+   4: solana_test_validator::TestValidator::start
+   5: solana_test_validator::TestValidatorGenesis::start_with_mint_address_and_geyser_plugin_rpc
+   6: solana_test_validator::main
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

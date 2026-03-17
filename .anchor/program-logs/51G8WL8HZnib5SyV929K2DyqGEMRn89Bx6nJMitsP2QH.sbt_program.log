@@ -1,0 +1,342 @@
+Streaming transaction logs mentioning 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH. Confirmed commitment
+Transaction executed in slot 48:
+  Signature: 58AYazzmVHhgotwhLuoQUQQLUM4uMB6QwGMt8TvkKUd5FY9xsh15aSnDSXJ2vX5SHDR89GpeArjkeidW6wpd2WhU
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: InitializeConfig
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program log: SBT Config initialized. Authority: CLvQ6mq4VCr25s5t9Xp9128Ayw8L3ScU89qv3MCSjyW7
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 8401 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 49:
+  Signature: 58AYazzmVHhgotwhLuoQUQQLUM4uMB6QwGMt8TvkKUd5FY9xsh15aSnDSXJ2vX5SHDR89GpeArjkeidW6wpd2WhU
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: InitializeConfig
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program log: SBT Config initialized. Authority: CLvQ6mq4VCr25s5t9Xp9128Ayw8L3ScU89qv3MCSjyW7
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 8401 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 49:
+  Signature: 29VWGgJAnQ5D8FMYs9TegPdQuwJEQFiP7piwmX2hpQVjHzyK8TRxjjSD1SFC6ywFGv17TUzC9ukfUfyr3PPS8ZW7
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: MintSbt
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializeNonTransferableMint
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 751 of 179761 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializePermanentDelegate
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 899 of 177700 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializeMint2
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1857 of 175428 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]
+    Program log: Create
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: GetAccountDataSize
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1447 of 158709 compute units
+    Program return: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb rgAAAAAAAAA=
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program 11111111111111111111111111111111 invoke [3]
+    Program 11111111111111111111111111111111 success
+    Program log: Initialize the associated token account
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: InitializeImmutableOwner
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 674 of 152440 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: InitializeAccount3
+    Program log: Warning: Mint has a permanent delegate, so tokens in this account may be seized at any time
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2840 of 149430 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 20756 of 167042 compute units
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: MintTo
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1695 of 144484 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 958 of 141093 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: FreezeAccount
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1120 of 138378 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 968 of 135538 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program log: SBT minted. Mint: 51ohuoTrpuoxEKcarnz37ngLTmnuNSDXJxgGBMSCnWDD | Recipient: 5roTNKRNTD2DUYHzCH8QEXcVVbinwF3NRuVeN7WZ2Fhm | Issuer: Example DAO | IssuedAt: 1773734952
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 71240 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 50:
+  Signature: 29VWGgJAnQ5D8FMYs9TegPdQuwJEQFiP7piwmX2hpQVjHzyK8TRxjjSD1SFC6ywFGv17TUzC9ukfUfyr3PPS8ZW7
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: MintSbt
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializeNonTransferableMint
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 751 of 179761 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializePermanentDelegate
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 899 of 177700 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializeMint2
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1857 of 175428 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]
+    Program log: Create
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: GetAccountDataSize
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1447 of 158709 compute units
+    Program return: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb rgAAAAAAAAA=
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program 11111111111111111111111111111111 invoke [3]
+    Program 11111111111111111111111111111111 success
+    Program log: Initialize the associated token account
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: InitializeImmutableOwner
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 674 of 152440 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: InitializeAccount3
+    Program log: Warning: Mint has a permanent delegate, so tokens in this account may be seized at any time
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2840 of 149430 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 20756 of 167042 compute units
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: MintTo
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1695 of 144484 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 958 of 141093 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: FreezeAccount
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1120 of 138378 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 968 of 135538 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program log: SBT minted. Mint: 51ohuoTrpuoxEKcarnz37ngLTmnuNSDXJxgGBMSCnWDD | Recipient: 5roTNKRNTD2DUYHzCH8QEXcVVbinwF3NRuVeN7WZ2Fhm | Issuer: Example DAO | IssuedAt: 1773734953
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 71240 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 51:
+  Signature: 25zKZBYAJaAnoXQjDSUGbcYCtv4t3QqQ2yGtw64WSfGZe1NxUjFCqnrb4fzeVSZMLCjZkgtrcJHNDxR2Z1qCJLJk
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: VerifySbt
+    Program log: SBT valid. Owner: 5roTNKRNTD2DUYHzCH8QEXcVVbinwF3NRuVeN7WZ2Fhm | Issuer: Example DAO | IssuedAt: 1773734953 | Name: Example SBT
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 6752 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 51:
+  Signature: UfL2FvBxdqYLSkLcLuxzfHBB2EvRVTXfFMMNmFipCTaw22qi4juqePrYSrL5SYmZeurkhot7jUH94p5P16FH6Sq
+  Status: Error processing Instruction 0: custom program error: 0x1777
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: VerifySbt
+    Program log: AnchorError thrown in programs/sbt_program/src/lib.rs:391. Error Code: NotOwner. Error Number: 6007. Error Message: The specified wallet is not the owner of this SBT.
+    Program log: Left:
+    Program log: 5roTNKRNTD2DUYHzCH8QEXcVVbinwF3NRuVeN7WZ2Fhm
+    Program log: Right:
+    Program log: AXuRup7GwsraCG3kZkrYg9V7YgJytd9GEtQcRfFcfCZo
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 6429 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH failed: custom program error: 0x1777
+Transaction executed in slot 52:
+  Signature: 4kVf4cpY5ecd9QsxrjGRWczdKYmrwFLW3812bDMNrRQfgMRBUBmUQSVfS5G1KJppXtd4mabi41NcrtGYgs6AHAey
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: MintSbt
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializeNonTransferableMint
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 751 of 182669 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializePermanentDelegate
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 899 of 180608 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializeMint2
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1857 of 178336 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]
+    Program log: Create
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: GetAccountDataSize
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1447 of 167617 compute units
+    Program return: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb rgAAAAAAAAA=
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program 11111111111111111111111111111111 invoke [3]
+    Program 11111111111111111111111111111111 success
+    Program log: Initialize the associated token account
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: InitializeImmutableOwner
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 674 of 161348 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: InitializeAccount3
+    Program log: Warning: Mint has a permanent delegate, so tokens in this account may be seized at any time
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2840 of 158338 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 17756 of 172950 compute units
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: MintTo
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1695 of 153392 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 958 of 150001 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: FreezeAccount
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1120 of 147286 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 968 of 144446 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program log: SBT minted. Mint: BBvZUnhbtAdNayNfFhoEneYzjx7KDXnyUnErasgvBkaz | Recipient: Dph9tGedCFmeV3HTobaDXTGEvPHbp8JVvA3Gsk993YhM | Issuer: Test Issuer | IssuedAt: 1773734953
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 62332 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 53:
+  Signature: 4kVf4cpY5ecd9QsxrjGRWczdKYmrwFLW3812bDMNrRQfgMRBUBmUQSVfS5G1KJppXtd4mabi41NcrtGYgs6AHAey
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: MintSbt
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializeNonTransferableMint
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 751 of 182669 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializePermanentDelegate
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 899 of 180608 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: InitializeMint2
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1857 of 178336 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]
+    Program log: Create
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: GetAccountDataSize
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1447 of 167617 compute units
+    Program return: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb rgAAAAAAAAA=
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program 11111111111111111111111111111111 invoke [3]
+    Program 11111111111111111111111111111111 success
+    Program log: Initialize the associated token account
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: InitializeImmutableOwner
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 674 of 161348 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [3]
+    Program log: Instruction: InitializeAccount3
+    Program log: Warning: Mint has a permanent delegate, so tokens in this account may be seized at any time
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2840 of 158338 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 17756 of 172950 compute units
+    Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: MintTo
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1695 of 153392 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 958 of 150001 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: FreezeAccount
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1120 of 147286 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 968 of 144446 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program log: SBT minted. Mint: BBvZUnhbtAdNayNfFhoEneYzjx7KDXnyUnErasgvBkaz | Recipient: Dph9tGedCFmeV3HTobaDXTGEvPHbp8JVvA3Gsk993YhM | Issuer: Test Issuer | IssuedAt: 1773734954
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 62332 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 53:
+  Signature: 3qQ6AN8sB16zkmDooodv6DhLnfzUo9jhr1ET34yS9Qos9VemJyuBwc8JX4vFt5Ke1FTsHgkogcBpsdUXezEeosam
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: RevokeSbt
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: ThawAccount
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1117 of 191110 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: Burn
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1707 of 188210 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program log: SBT revoked. Mint: BBvZUnhbtAdNayNfFhoEneYzjx7KDXnyUnErasgvBkaz | Former owner: Dph9tGedCFmeV3HTobaDXTGEvPHbp8JVvA3Gsk993YhM
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 18281 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 54:
+  Signature: 3qQ6AN8sB16zkmDooodv6DhLnfzUo9jhr1ET34yS9Qos9VemJyuBwc8JX4vFt5Ke1FTsHgkogcBpsdUXezEeosam
+  Status: Ok
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: RevokeSbt
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: ThawAccount
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1117 of 191110 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]
+    Program log: Instruction: Burn
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1707 of 188210 compute units
+    Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success
+    Program log: SBT revoked. Mint: BBvZUnhbtAdNayNfFhoEneYzjx7KDXnyUnErasgvBkaz | Former owner: Dph9tGedCFmeV3HTobaDXTGEvPHbp8JVvA3Gsk993YhM
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 18281 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH success
+Transaction executed in slot 55:
+  Signature: 244b35H6NsefRA9TuJC7rJGitF4cei1YuuGBB9vtLoyhSfZYkVyzpeqad5yq8sH3Vbevt5jivQLEaNEV8CXYHNtG
+  Status: Error processing Instruction 0: custom program error: 0x1774
+  Log Messages:
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH invoke [1]
+    Program log: Instruction: MintSbt
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program log: AnchorError thrown in programs/sbt_program/src/lib.rs:97. Error Code: Unauthorized. Error Number: 6004. Error Message: Only the program authority can perform this action.
+    Program log: Left:
+    Program log: CLvQ6mq4VCr25s5t9Xp9128Ayw8L3ScU89qv3MCSjyW7
+    Program log: Right:
+    Program log: AZoEsiPnyEi1ZrXkWimjdiJ6M2iFJnu4Z3wogWesesqD
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH consumed 15528 of 200000 compute units
+    Program 51G8WL8HZnib5SyV929K2DyqGEMRn89Bx6nJMitsP2QH failed: custom program error: 0x1774
