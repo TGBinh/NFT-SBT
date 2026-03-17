@@ -548,4 +548,121 @@ describe("sbt_program", () => {
       }
     });
   });
+
+  describe("revoke_sbt and verify_sbt", () => {
+    // Uses mintKp from mint_human_capital test -- we need a fresh mint here
+    const revokeRecipient = Keypair.generate();
+    let revokeMintKp: Keypair;
+    let revokeSbtRecord: PublicKey;
+    let revokeTokenAccount: PublicKey;
+
+    before(async () => {
+      await airdrop(provider.connection, revokeRecipient.publicKey);
+      revokeMintKp = Keypair.generate();
+      revokeSbtRecord = deriveSbtRecord(revokeMintKp.publicKey, program.programId);
+      revokeTokenAccount = getToken2022ATA(revokeMintKp.publicKey, revokeRecipient.publicKey);
+
+      // Mint a Human Capital SBT to revoke
+      const participationPda = deriveParticipation(
+        SbtType.HumanCapital, toId(""), 0, revokeRecipient.publicKey, program.programId
+      );
+      await program.methods
+        .mintHumanCapital("RevokeMeUser", "TestIssuer", "https://example.com/hc2.json")
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.HumanCapital, program.programId),
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+          recipient: revokeRecipient.publicKey,
+          sbtRecord: revokeSbtRecord,
+          participationRecord: participationPda,
+          mint: revokeMintKp.publicKey,
+          tokenAccount: revokeTokenAccount,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([revokeMintKp])
+        .rpc();
+    });
+
+    it("verify_sbt succeeds for valid SBT", async () => {
+      await program.methods.verifySbt()
+        .accounts({
+          owner: revokeRecipient.publicKey,
+          mint: revokeMintKp.publicKey,
+          sbtRecord: revokeSbtRecord,
+        })
+        .rpc();
+    });
+
+    it("verify_sbt fails with wrong owner", async () => {
+      const wrongOwner = Keypair.generate();
+      try {
+        await program.methods.verifySbt()
+          .accounts({
+            owner: wrongOwner.publicKey,
+            mint: revokeMintKp.publicKey,
+            sbtRecord: revokeSbtRecord,
+          })
+          .rpc();
+        assert.fail("Expected NotOwner");
+      } catch (e: any) {
+        assert.ok(e.message.includes("NotOwner") || e.message.includes("2007"));
+      }
+    });
+
+    it("revoke_sbt burns token and marks record revoked", async () => {
+      await program.methods
+        .revokeSbt(SbtType.HumanCapital)
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.HumanCapital, program.programId),
+          authority: authority.publicKey,
+          mint: revokeMintKp.publicKey,
+          tokenAccount: revokeTokenAccount,
+          sbtRecord: revokeSbtRecord,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      const record = await program.account.sbtRecord.fetch(revokeSbtRecord);
+      assert.equal(record.revoked, true);
+    });
+
+    it("verify_sbt fails after revocation", async () => {
+      try {
+        await program.methods.verifySbt()
+          .accounts({
+            owner: revokeRecipient.publicKey,
+            mint: revokeMintKp.publicKey,
+            sbtRecord: revokeSbtRecord,
+          })
+          .rpc();
+        assert.fail("Expected SbtRevoked");
+      } catch (e: any) {
+        assert.ok(e.message.includes("SbtRevoked") || e.message.includes("2007"));
+      }
+    });
+
+    it("revoke_sbt fails on already-revoked SBT", async () => {
+      try {
+        await program.methods
+          .revokeSbt(SbtType.HumanCapital)
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.HumanCapital, program.programId),
+            authority: authority.publicKey,
+            mint: revokeMintKp.publicKey,
+            tokenAccount: revokeTokenAccount,
+            sbtRecord: revokeSbtRecord,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("Expected AlreadyRevoked");
+      } catch (e: any) {
+        assert.ok(e.message.includes("AlreadyRevoked") || e.message.includes("2005"));
+      }
+    });
+  });
 });

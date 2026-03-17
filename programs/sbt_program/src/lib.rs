@@ -56,4 +56,10 @@ pub mod sbt_program {
     ) -> Result<()> {
         instructions::mint_challenge_mission::handler(ctx, mission_index, name, issuer)
     }
+    pub fn revoke_sbt(ctx: Context<RevokeSbt>, sbt_type: u8) -> Result<()> {
+        instructions::revoke_sbt::handler(ctx, sbt_type)
+    }
+    pub fn verify_sbt(ctx: Context<VerifySbt>) -> Result<()> {
+        instructions::verify_sbt::handler(ctx)
+    }
 }
