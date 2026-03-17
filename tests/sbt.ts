@@ -472,6 +472,37 @@ describe("sbt_program", () => {
       assert.equal(record.sbtType, SbtType.ChallengeAccepted);
       assert.equal(record.missionIndex, 0);
     });
+
+    it("rejects duplicate ChallengeAccepted SBT for same user+challenge", async () => {
+      const mintKp2 = Keypair.generate();
+      const participationPda = deriveParticipation(
+        SbtType.ChallengeAccepted, challengeId, 0, recipient3.publicKey, program.programId
+      );
+      try {
+        await program.methods
+          .mintChallengeAccepted("Bob", "ChallengeOrg")
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+            challengeConfig: challengeConfigPda,
+            authority: authority.publicKey,
+            payer: authority.publicKey,
+            recipient: recipient3.publicKey,
+            sbtRecord: deriveSbtRecord(mintKp2.publicKey, program.programId),
+            participationRecord: participationPda,
+            mint: mintKp2.publicKey,
+            tokenAccount: getToken2022ATA(mintKp2.publicKey, recipient3.publicKey),
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([mintKp2])
+          .rpc();
+        assert.fail("Expected duplicate rejection");
+      } catch (e: any) {
+        assert.ok(e.message.includes("already in use") || e.message.includes("0x0"));
+      }
+    });
   });
 
   describe("mint_challenge_mission", () => {
