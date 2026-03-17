@@ -236,4 +236,80 @@ describe("sbt_program", () => {
       }
     });
   });
+
+  describe("mint_human_capital", () => {
+    const recipient = Keypair.generate();
+    let mintKp: Keypair;
+
+    before(async () => {
+      await airdrop(provider.connection, recipient.publicKey);
+      mintKp = Keypair.generate();
+    });
+
+    it("mints Human Capital SBT and creates on-chain record", async () => {
+      const sbtRecord = deriveSbtRecord(mintKp.publicKey, program.programId);
+      const participationPda = deriveParticipation(
+        SbtType.HumanCapital, toId(""), 0, recipient.publicKey, program.programId
+      );
+      const tokenAccount = getToken2022ATA(mintKp.publicKey, recipient.publicKey);
+
+      await program.methods
+        .mintHumanCapital("Taro Yamada", "DAO Admin", "https://example.com/hc.json")
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.HumanCapital, program.programId),
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+          recipient: recipient.publicKey,
+          sbtRecord,
+          participationRecord: participationPda,
+          mint: mintKp.publicKey,
+          tokenAccount,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([mintKp])
+        .rpc();
+
+      const record = await program.account.sbtRecord.fetch(sbtRecord);
+      assert.ok(record.owner.equals(recipient.publicKey));
+      assert.equal(record.sbtType, SbtType.HumanCapital);
+      assert.equal(record.revoked, false);
+      assert.equal(record.name, "Taro Yamada");
+
+      const bal = await provider.connection.getTokenAccountBalance(tokenAccount);
+      assert.equal(bal.value.uiAmount, 1);
+    });
+
+    it("rejects duplicate Human Capital SBT for same user", async () => {
+      const mintKp2 = Keypair.generate();
+      const participationPda = deriveParticipation(
+        SbtType.HumanCapital, toId(""), 0, recipient.publicKey, program.programId
+      );
+      try {
+        await program.methods
+          .mintHumanCapital("Taro Yamada", "DAO Admin", "https://example.com/hc.json")
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.HumanCapital, program.programId),
+            authority: authority.publicKey,
+            payer: authority.publicKey,
+            recipient: recipient.publicKey,
+            sbtRecord: deriveSbtRecord(mintKp2.publicKey, program.programId),
+            participationRecord: participationPda,
+            mint: mintKp2.publicKey,
+            tokenAccount: getToken2022ATA(mintKp2.publicKey, recipient.publicKey),
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([mintKp2])
+          .rpc();
+        assert.fail("Expected duplicate rejection");
+      } catch (e: any) {
+        assert.ok(e.message.includes("already in use") || e.message.includes("0x0"));
+      }
+    });
+  });
 });

@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_2022::Token2022;
+use anchor_spl::associated_token::AssociatedToken;
 
 pub mod errors;
 pub mod instructions;
@@ -36,5 +38,8 @@ pub mod sbt_program {
     }
     pub fn update_challenge(ctx: Context<UpdateChallenge>, active: bool) -> Result<()> {
         instructions::update_challenge::handler(ctx, active)
+    }
+    pub fn mint_human_capital(ctx: Context<MintHumanCapital>, name: String, issuer: String, uri: String) -> Result<()> {
+        instructions::mint_human_capital::handler(ctx, name, issuer, uri)
     }
 }
