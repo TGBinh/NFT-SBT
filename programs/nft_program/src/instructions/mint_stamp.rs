@@ -67,9 +67,9 @@ pub fn handler(
         rent: Some(ctx.accounts.rent.key()),
     }.instruction(CreateMetadataAccountV3InstructionArgs {
         data: DataV2 {
-            name: name.clone(),
-            symbol: symbol.clone(),
-            uri: uri.clone(),
+            name,
+            symbol,
+            uri,
             seller_fee_basis_points: royalty,
             creators: None,
             collection: None,
@@ -121,6 +121,11 @@ pub fn handler(
     participation.bump = ctx.bumps.stamp_participation;
 
     // Write StampRecord
+    // Note: owner_at_mint is intentionally absent here. For stamp NFTs, provenance
+    // (who received this NFT) is proven by the StampParticipation PDA, which is seeded
+    // by (stamp_participation, rally_id, checkpoint_index, recipient). The PDA's existence
+    // is itself proof of ownership at mint time, making a redundant owner_at_mint field
+    // in StampRecord unnecessary (unlike RwaRecord, which uses a different dedup structure).
     let record = &mut ctx.accounts.stamp_record;
     record.mint = ctx.accounts.mint.key();
     record.rally_id = rally_id;
@@ -128,6 +133,10 @@ pub fn handler(
     record.bump = ctx.bumps.stamp_record;
 
     ctx.accounts.nft_config.nft_count = ctx.accounts.nft_config.nft_count
+        .checked_add(1)
+        .ok_or(NftError::Overflow)?;
+
+    ctx.accounts.rally_config.participant_count = ctx.accounts.rally_config.participant_count
         .checked_add(1)
         .ok_or(NftError::Overflow)?;
 
@@ -139,14 +148,14 @@ pub fn handler(
 pub struct MintStamp<'info> {
     #[account(
         mut,
-        seeds = [b"nft_config", &[1u8]],
+        seeds = [NFT_CONFIG_SEED, &[1u8]],
         bump = nft_config.bump,
     )]
     pub nft_config: Account<'info, NftConfig>,
 
     #[account(
         mut,
-        seeds = [b"rally_config", rally_config.rally_id.as_ref()],
+        seeds = [RALLY_CONFIG_SEED, rally_config.rally_id.as_ref()],
         bump = rally_config.bump,
     )]
     pub rally_config: Account<'info, RallyConfig>,
@@ -155,7 +164,7 @@ pub struct MintStamp<'info> {
         init,
         payer = authority,
         space = 8 + StampParticipation::SPACE,
-        seeds = [b"stamp_participation", rally_config.rally_id.as_ref(), &[checkpoint_index], recipient.key().as_ref()],
+        seeds = [STAMP_PARTICIPATION_SEED, rally_config.rally_id.as_ref(), &[checkpoint_index], recipient.key().as_ref()],
         bump,
     )]
     pub stamp_participation: Account<'info, StampParticipation>,
@@ -164,7 +173,7 @@ pub struct MintStamp<'info> {
         init,
         payer = authority,
         space = 8 + StampRecord::SPACE,
-        seeds = [b"stamp_record", mint.key().as_ref()],
+        seeds = [STAMP_RECORD_SEED, mint.key().as_ref()],
         bump,
     )]
     pub stamp_record: Account<'info, StampRecord>,
@@ -172,8 +181,7 @@ pub struct MintStamp<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    /// CHECK: recipient wallet
-    pub recipient: UncheckedAccount<'info>,
+    pub recipient: SystemAccount<'info>,
 
     #[account(
         init,
