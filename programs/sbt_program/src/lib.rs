@@ -45,4 +45,15 @@ pub mod sbt_program {
     pub fn mint_event_sbt(ctx: Context<MintEventSbt>, name: String, issuer: String) -> Result<()> {
         instructions::mint_event_sbt::handler(ctx, name, issuer)
     }
+    pub fn mint_challenge_accepted(ctx: Context<MintChallengeAccepted>, name: String, issuer: String) -> Result<()> {
+        instructions::mint_challenge_accepted::handler(ctx, name, issuer)
+    }
+    pub fn mint_challenge_mission(
+        ctx: Context<MintChallengeMission>,
+        mission_index: u8,
+        name: String,
+        issuer: String,
+    ) -> Result<()> {
+        instructions::mint_challenge_mission::handler(ctx, mission_index, name, issuer)
+    }
 }

@@ -429,4 +429,123 @@ describe("sbt_program", () => {
       }
     });
   });
+
+  describe("mint_challenge_accepted", () => {
+    const challengeId = toId("test-challenge-001");
+    const challengeConfigPda = deriveChallengeConfig(challengeId, program.programId);
+    const recipient3 = Keypair.generate();
+    let mintKp: Keypair;
+
+    before(async () => {
+      await airdrop(provider.connection, recipient3.publicKey);
+      mintKp = Keypair.generate();
+    });
+
+    it("mints ChallengeAccepted SBT", async () => {
+      const sbtRecord = deriveSbtRecord(mintKp.publicKey, program.programId);
+      const participationPda = deriveParticipation(
+        SbtType.ChallengeAccepted, challengeId, 0, recipient3.publicKey, program.programId
+      );
+      const tokenAccount = getToken2022ATA(mintKp.publicKey, recipient3.publicKey);
+
+      await program.methods
+        .mintChallengeAccepted("Bob", "ChallengeOrg")
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          challengeConfig: challengeConfigPda,
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+          recipient: recipient3.publicKey,
+          sbtRecord,
+          participationRecord: participationPda,
+          mint: mintKp.publicKey,
+          tokenAccount,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([mintKp])
+        .rpc();
+
+      const record = await program.account.sbtRecord.fetch(sbtRecord);
+      assert.equal(record.sbtType, SbtType.ChallengeAccepted);
+      assert.equal(record.missionIndex, 0);
+    });
+  });
+
+  describe("mint_challenge_mission", () => {
+    const challengeId = toId("test-challenge-001");
+    const challengeConfigPda = deriveChallengeConfig(challengeId, program.programId);
+    const recipient4 = Keypair.generate();
+
+    before(async () => {
+      await airdrop(provider.connection, recipient4.publicKey);
+    });
+
+    it("mints 3 mission SBTs and quest complete SBT without collision", async () => {
+      for (const idx of [0, 1, 2, 255]) {
+        const mintKp = Keypair.generate();
+        const sbtRecord = deriveSbtRecord(mintKp.publicKey, program.programId);
+        const participationPda = deriveParticipation(
+          SbtType.ChallengeMission, challengeId, idx, recipient4.publicKey, program.programId
+        );
+        const tokenAccount = getToken2022ATA(mintKp.publicKey, recipient4.publicKey);
+
+        await program.methods
+          .mintChallengeMission(idx, "Carol", "ChallengeOrg")
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
+            challengeConfig: challengeConfigPda,
+            authority: authority.publicKey,
+            payer: authority.publicKey,
+            recipient: recipient4.publicKey,
+            sbtRecord,
+            participationRecord: participationPda,
+            mint: mintKp.publicKey,
+            tokenAccount,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([mintKp])
+          .rpc();
+
+        const record = await program.account.sbtRecord.fetch(sbtRecord);
+        assert.equal(record.sbtType, SbtType.ChallengeMission);
+        assert.equal(record.missionIndex, idx);
+      }
+    });
+
+    it("rejects out-of-range mission_index", async () => {
+      const mintKp = Keypair.generate();
+      const recipient5 = Keypair.generate();
+      await airdrop(provider.connection, recipient5.publicKey);
+      try {
+        await program.methods
+          .mintChallengeMission(100, "Dave", "ChallengeOrg")
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
+            challengeConfig: challengeConfigPda,
+            authority: authority.publicKey,
+            payer: authority.publicKey,
+            recipient: recipient5.publicKey,
+            sbtRecord: deriveSbtRecord(mintKp.publicKey, program.programId),
+            participationRecord: deriveParticipation(SbtType.ChallengeMission, challengeId, 100, recipient5.publicKey, program.programId),
+            mint: mintKp.publicKey,
+            tokenAccount: getToken2022ATA(mintKp.publicKey, recipient5.publicKey),
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([mintKp])
+          .rpc();
+        assert.fail("Expected InvalidMissionIndex");
+      } catch (e: any) {
+        assert.ok(e.message.includes("InvalidMissionIndex") || e.message.includes("2013"));
+      }
+    });
+  });
 });
