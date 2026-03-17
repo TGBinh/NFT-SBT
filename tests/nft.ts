@@ -312,4 +312,274 @@ describe("nft_program", () => {
       }
     });
   });
+
+  describe("mint_stamp", () => {
+    const rallyId = toId("stamp-rally-1");
+    const rallyIdBuf = Buffer.from(rallyId);
+
+    before(async () => {
+      try {
+        await program.methods
+          .createRally(
+            rallyId,
+            "Stamp Rally 1",
+            "STMP",
+            "https://example.com/stamp.json",
+            "https://example.com/complete.json",
+            3
+          )
+          .accounts({
+            nftConfig: deriveNftConfig(CollectionType.StampRally, program.programId),
+            rallyConfig: deriveRallyConfig(rallyId, program.programId),
+            authority: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([authority])
+          .rpc();
+      } catch (e: any) {
+        if (!e.message?.includes("already in use")) throw e;
+      }
+    });
+
+    it("mints checkpoint 0 stamp", async () => {
+      const mint = Keypair.generate();
+      const stampParticipation = deriveStampParticipation(
+        rallyId,
+        0,
+        authority.publicKey,
+        program.programId
+      );
+      const stampRecord = deriveStampRecord(mint.publicKey, program.programId);
+      const recipientAta = await getAssociatedTokenAddress(
+        mint.publicKey,
+        authority.publicKey
+      );
+      const metadata = deriveMetadata(mint.publicKey);
+      const masterEdition = deriveMasterEdition(mint.publicKey);
+
+      await program.methods
+        .mintStamp(0, "Stamp #0", "STMP", 500)
+        .accounts({
+          nftConfig: deriveNftConfig(CollectionType.StampRally, program.programId),
+          rallyConfig: deriveRallyConfig(rallyId, program.programId),
+          stampParticipation,
+          stampRecord,
+          authority: authority.publicKey,
+          recipient: authority.publicKey,
+          mint: mint.publicKey,
+          recipientTokenAccount: recipientAta,
+          metadata,
+          masterEdition,
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([authority, mint])
+        .rpc();
+
+      const sp = await program.account.stampParticipation.fetch(stampParticipation);
+      assert.ok(sp.user.equals(authority.publicKey));
+      assert.equal(sp.checkpointIndex, 0);
+      assert.deepEqual(sp.rallyId, rallyId);
+
+      const sr = await program.account.stampRecord.fetch(stampRecord);
+      assert.ok(sr.mint.equals(mint.publicKey));
+      assert.equal(sr.checkpointIndex, 0);
+
+      const bal = await getAccount(provider.connection, recipientAta);
+      assert.equal(bal.amount.toString(), "1");
+    });
+
+    it("mints checkpoint 1 stamp", async () => {
+      const mint = Keypair.generate();
+      const stampParticipation = deriveStampParticipation(
+        rallyId,
+        1,
+        authority.publicKey,
+        program.programId
+      );
+      const stampRecord = deriveStampRecord(mint.publicKey, program.programId);
+      const recipientAta = await getAssociatedTokenAddress(
+        mint.publicKey,
+        authority.publicKey
+      );
+      const metadata = deriveMetadata(mint.publicKey);
+      const masterEdition = deriveMasterEdition(mint.publicKey);
+
+      await program.methods
+        .mintStamp(1, "Stamp #1", "STMP", 500)
+        .accounts({
+          nftConfig: deriveNftConfig(CollectionType.StampRally, program.programId),
+          rallyConfig: deriveRallyConfig(rallyId, program.programId),
+          stampParticipation,
+          stampRecord,
+          authority: authority.publicKey,
+          recipient: authority.publicKey,
+          mint: mint.publicKey,
+          recipientTokenAccount: recipientAta,
+          metadata,
+          masterEdition,
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([authority, mint])
+        .rpc();
+
+      const sp = await program.account.stampParticipation.fetch(stampParticipation);
+      assert.ok(sp.user.equals(authority.publicKey));
+      assert.equal(sp.checkpointIndex, 1);
+
+      const sr = await program.account.stampRecord.fetch(stampRecord);
+      assert.ok(sr.mint.equals(mint.publicKey));
+
+      const bal = await getAccount(provider.connection, recipientAta);
+      assert.equal(bal.amount.toString(), "1");
+    });
+
+    it("mints completion stamp (checkpoint_index=255)", async () => {
+      const mint = Keypair.generate();
+      const stampParticipation = deriveStampParticipation(
+        rallyId,
+        255,
+        authority.publicKey,
+        program.programId
+      );
+      const stampRecord = deriveStampRecord(mint.publicKey, program.programId);
+      const recipientAta = await getAssociatedTokenAddress(
+        mint.publicKey,
+        authority.publicKey
+      );
+      const metadata = deriveMetadata(mint.publicKey);
+      const masterEdition = deriveMasterEdition(mint.publicKey);
+
+      await program.methods
+        .mintStamp(255, "Completion", "STMP", 500)
+        .accounts({
+          nftConfig: deriveNftConfig(CollectionType.StampRally, program.programId),
+          rallyConfig: deriveRallyConfig(rallyId, program.programId),
+          stampParticipation,
+          stampRecord,
+          authority: authority.publicKey,
+          recipient: authority.publicKey,
+          mint: mint.publicKey,
+          recipientTokenAccount: recipientAta,
+          metadata,
+          masterEdition,
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([authority, mint])
+        .rpc();
+
+      const sp = await program.account.stampParticipation.fetch(stampParticipation);
+      assert.ok(sp.user.equals(authority.publicKey));
+      assert.equal(sp.checkpointIndex, 255);
+
+      const bal = await getAccount(provider.connection, recipientAta);
+      assert.equal(bal.amount.toString(), "1");
+    });
+
+    it("rejects duplicate stamp (same checkpoint, same recipient)", async () => {
+      // checkpoint 0 was already minted for authority.publicKey in first test
+      const mint = Keypair.generate();
+      const stampParticipation = deriveStampParticipation(
+        rallyId,
+        0,
+        authority.publicKey,
+        program.programId
+      );
+      const stampRecord = deriveStampRecord(mint.publicKey, program.programId);
+      const recipientAta = await getAssociatedTokenAddress(
+        mint.publicKey,
+        authority.publicKey
+      );
+      const metadata = deriveMetadata(mint.publicKey);
+      const masterEdition = deriveMasterEdition(mint.publicKey);
+
+      try {
+        await program.methods
+          .mintStamp(0, "Stamp #0 Dup", "STMP", 500)
+          .accounts({
+            nftConfig: deriveNftConfig(CollectionType.StampRally, program.programId),
+            rallyConfig: deriveRallyConfig(rallyId, program.programId),
+            stampParticipation,
+            stampRecord,
+            authority: authority.publicKey,
+            recipient: authority.publicKey,
+            mint: mint.publicKey,
+            recipientTokenAccount: recipientAta,
+            metadata,
+            masterEdition,
+            tokenMetadataProgram: METADATA_PROGRAM_ID,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([authority, mint])
+          .rpc();
+        assert.fail("Expected duplicate rejection");
+      } catch (e: any) {
+        assert.ok(
+          e.message.includes("already in use") || e.message.includes("0x0")
+        );
+      }
+    });
+
+    it("rejects invalid checkpoint_index (>=total_checkpoints and !=255)", async () => {
+      const mint = Keypair.generate();
+      const stampParticipation = deriveStampParticipation(
+        rallyId,
+        5,
+        authority.publicKey,
+        program.programId
+      );
+      const stampRecord = deriveStampRecord(mint.publicKey, program.programId);
+      const recipientAta = await getAssociatedTokenAddress(
+        mint.publicKey,
+        authority.publicKey
+      );
+      const metadata = deriveMetadata(mint.publicKey);
+      const masterEdition = deriveMasterEdition(mint.publicKey);
+
+      try {
+        await program.methods
+          .mintStamp(5, "Invalid Stamp", "STMP", 500)
+          .accounts({
+            nftConfig: deriveNftConfig(CollectionType.StampRally, program.programId),
+            rallyConfig: deriveRallyConfig(rallyId, program.programId),
+            stampParticipation,
+            stampRecord,
+            authority: authority.publicKey,
+            recipient: authority.publicKey,
+            mint: mint.publicKey,
+            recipientTokenAccount: recipientAta,
+            metadata,
+            masterEdition,
+            tokenMetadataProgram: METADATA_PROGRAM_ID,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([authority, mint])
+          .rpc();
+        assert.fail("Expected InvalidCheckpointIndex error");
+      } catch (e: any) {
+        assert.ok(
+          e.message.includes("InvalidCheckpointIndex") ||
+          e.message.includes("6007") ||
+          e.error?.errorCode?.code === "InvalidCheckpointIndex"
+        );
+      }
+    });
+  });
 });

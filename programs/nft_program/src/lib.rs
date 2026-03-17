@@ -42,4 +42,14 @@ pub mod nft_program {
     ) -> Result<()> {
         instructions::mint_rwa::handler(ctx, name, symbol, uri, royalty, challenge_id)
     }
+
+    pub fn mint_stamp(
+        ctx: Context<MintStamp>,
+        checkpoint_index: u8,
+        name: String,
+        symbol: String,
+        royalty: u16,
+    ) -> Result<()> {
+        instructions::mint_stamp::handler(ctx, checkpoint_index, name, symbol, royalty)
+    }
 }
