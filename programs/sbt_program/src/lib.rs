@@ -42,4 +42,7 @@ pub mod sbt_program {
     pub fn mint_human_capital(ctx: Context<MintHumanCapital>, name: String, issuer: String, uri: String) -> Result<()> {
         instructions::mint_human_capital::handler(ctx, name, issuer, uri)
     }
+    pub fn mint_event_sbt(ctx: Context<MintEventSbt>, name: String, issuer: String) -> Result<()> {
+        instructions::mint_event_sbt::handler(ctx, name, issuer)
+    }
 }

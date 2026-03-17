@@ -312,4 +312,121 @@ describe("sbt_program", () => {
       }
     });
   });
+
+  describe("mint_event_sbt", () => {
+    const eventId = toId("test-event-001");
+    const eventConfigPda = deriveEventConfig(eventId, program.programId);
+    const recipient2 = Keypair.generate();
+    let mintKp: Keypair;
+
+    before(async () => {
+      await airdrop(provider.connection, recipient2.publicKey);
+      mintKp = Keypair.generate();
+    });
+
+    it("mints Event SBT and creates on-chain record", async () => {
+      const sbtRecord = deriveSbtRecord(mintKp.publicKey, program.programId);
+      const participationPda = deriveParticipation(
+        SbtType.Event, eventId, 0, recipient2.publicKey, program.programId
+      );
+      const tokenAccount = getToken2022ATA(mintKp.publicKey, recipient2.publicKey);
+
+      await program.methods
+        .mintEventSbt("Alice", "EventOrg")
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: eventConfigPda,
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+          recipient: recipient2.publicKey,
+          sbtRecord,
+          participationRecord: participationPda,
+          mint: mintKp.publicKey,
+          tokenAccount,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([mintKp])
+        .rpc();
+
+      const record = await program.account.sbtRecord.fetch(sbtRecord);
+      assert.ok(record.owner.equals(recipient2.publicKey));
+      assert.equal(record.sbtType, SbtType.Event);
+      assert.equal(record.revoked, false);
+
+      const cfg = await program.account.eventConfig.fetch(eventConfigPda);
+      assert.equal(cfg.participantCount.toString(), "1");
+    });
+
+    it("rejects duplicate Event SBT for same user+event", async () => {
+      const mintKp2 = Keypair.generate();
+      const participationPda = deriveParticipation(
+        SbtType.Event, eventId, 0, recipient2.publicKey, program.programId
+      );
+      try {
+        await program.methods
+          .mintEventSbt("Alice", "EventOrg")
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+            eventConfig: eventConfigPda,
+            authority: authority.publicKey,
+            payer: authority.publicKey,
+            recipient: recipient2.publicKey,
+            sbtRecord: deriveSbtRecord(mintKp2.publicKey, program.programId),
+            participationRecord: participationPda,
+            mint: mintKp2.publicKey,
+            tokenAccount: getToken2022ATA(mintKp2.publicKey, recipient2.publicKey),
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([mintKp2])
+          .rpc();
+        assert.fail("Expected duplicate rejection");
+      } catch (e: any) {
+        assert.ok(e.message.includes("already in use") || e.message.includes("0x0"));
+      }
+    });
+
+    it("rejects mint when event is inactive", async () => {
+      // First deactivate the event
+      await program.methods.updateEvent(false)
+        .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
+
+      const mintKp3 = Keypair.generate();
+      const recipient3 = Keypair.generate();
+      await airdrop(provider.connection, recipient3.publicKey);
+      try {
+        await program.methods
+          .mintEventSbt("Bob", "EventOrg")
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+            eventConfig: eventConfigPda,
+            authority: authority.publicKey,
+            payer: authority.publicKey,
+            recipient: recipient3.publicKey,
+            sbtRecord: deriveSbtRecord(mintKp3.publicKey, program.programId),
+            participationRecord: deriveParticipation(SbtType.Event, eventId, 0, recipient3.publicKey, program.programId),
+            mint: mintKp3.publicKey,
+            tokenAccount: getToken2022ATA(mintKp3.publicKey, recipient3.publicKey),
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([mintKp3])
+          .rpc();
+        assert.fail("Expected NotActive");
+      } catch (e: any) {
+        assert.ok(e.message.includes("NotActive") || e.message.includes("2012"));
+      } finally {
+        // restore
+        await program.methods.updateEvent(true)
+          .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
+      }
+    });
+  });
 });
