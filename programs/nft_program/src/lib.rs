@@ -31,4 +31,15 @@ pub mod nft_program {
     pub fn update_rally(ctx: Context<UpdateRally>, active: bool) -> Result<()> {
         instructions::update_rally::handler(ctx, active)
     }
+
+    pub fn mint_rwa(
+        ctx: Context<MintRwa>,
+        name: String,
+        symbol: String,
+        uri: String,
+        royalty: u16,
+        challenge_id: [u8; 32],
+    ) -> Result<()> {
+        instructions::mint_rwa::handler(ctx, name, symbol, uri, royalty, challenge_id)
+    }
 }

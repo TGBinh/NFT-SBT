@@ -210,4 +210,106 @@ describe("nft_program", () => {
         .rpc();
     });
   });
+
+  describe("mint_rwa", () => {
+    const challengeId = toId("challenge-001");
+    let mintKp: Keypair;
+
+    before(() => {
+      mintKp = Keypair.generate();
+    });
+
+    it("mints RWA NFT and creates issuance + record PDAs", async () => {
+      const rwaIssuance = deriveRwaIssuance(
+        challengeId,
+        recipient.publicKey,
+        program.programId
+      );
+      const rwaRecord = deriveRwaRecord(mintKp.publicKey, program.programId);
+      const tokenAccount = await getAssociatedTokenAddress(
+        mintKp.publicKey,
+        recipient.publicKey
+      );
+
+      await program.methods
+        .mintRwa(
+          "Kominka Stay",
+          "RWA",
+          "https://example.com/rwa.json",
+          500,
+          challengeId
+        )
+        .accounts({
+          nftConfig: deriveNftConfig(CollectionType.Rwa, program.programId),
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+          recipient: recipient.publicKey,
+          rwaIssuance,
+          rwaRecord,
+          mint: mintKp.publicKey,
+          tokenAccount,
+          metadata: deriveMetadata(mintKp.publicKey),
+          masterEdition: deriveMasterEdition(mintKp.publicKey),
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([authority, mintKp])
+        .rpc();
+
+      const rec = await program.account.rwaRecord.fetch(rwaRecord);
+      assert.equal(rec.isUsed, false);
+      assert.ok(rec.ownerAtMint.equals(recipient.publicKey));
+
+      const bal = await getAccount(provider.connection, tokenAccount);
+      assert.equal(bal.amount.toString(), "1");
+    });
+
+    it("rejects duplicate RWA mint for same (challenge, user)", async () => {
+      const mintKp2 = Keypair.generate();
+      try {
+        await program.methods
+          .mintRwa(
+            "Kominka Stay 2",
+            "RWA",
+            "https://example.com/rwa2.json",
+            500,
+            challengeId
+          )
+          .accounts({
+            nftConfig: deriveNftConfig(CollectionType.Rwa, program.programId),
+            authority: authority.publicKey,
+            payer: authority.publicKey,
+            recipient: recipient.publicKey,
+            rwaIssuance: deriveRwaIssuance(
+              challengeId,
+              recipient.publicKey,
+              program.programId
+            ),
+            rwaRecord: deriveRwaRecord(mintKp2.publicKey, program.programId),
+            mint: mintKp2.publicKey,
+            tokenAccount: await getAssociatedTokenAddress(
+              mintKp2.publicKey,
+              recipient.publicKey
+            ),
+            metadata: deriveMetadata(mintKp2.publicKey),
+            masterEdition: deriveMasterEdition(mintKp2.publicKey),
+            tokenMetadataProgram: METADATA_PROGRAM_ID,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .signers([authority, mintKp2])
+          .rpc();
+        assert.fail("Expected duplicate rejection");
+      } catch (e: any) {
+        assert.ok(
+          e.message.includes("already in use") || e.message.includes("0x0")
+        );
+      }
+    });
+  });
 });
