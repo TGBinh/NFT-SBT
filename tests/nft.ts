@@ -7,12 +7,16 @@ import {
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
   LAMPORTS_PER_SOL,
+  Transaction,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
+  getAssociatedTokenAddressSync,
   getAccount,
+  createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
 } from "@solana/spl-token";
 import { assert } from "chai";
 
@@ -631,6 +635,82 @@ describe("nft_program", () => {
         .rpc();
     });
 
+    it("rejects use by non-holder (zero balance)", async () => {
+      // mint3 is a fresh mint — we transfer the token away so the original
+      // holder's balance drops to 0, then verify use_rwa is rejected.
+      const mint3 = Keypair.generate();
+      const challengeId3 = toId("challenge-nonholder");
+      const rwaIssuance3 = deriveRwaIssuance(
+        challengeId3,
+        authority.publicKey,
+        program.programId
+      );
+      const rwaRecord3 = deriveRwaRecord(mint3.publicKey, program.programId);
+      const ata3 = getAssociatedTokenAddressSync(mint3.publicKey, authority.publicKey);
+      const metadata3 = deriveMetadata(mint3.publicKey);
+      const masterEdition3 = deriveMasterEdition(mint3.publicKey);
+
+      // Mint the RWA to authority
+      await program.methods
+        .mintRwa("Non Holder Test", "NHT", "https://example.com/nh.json", 0, challengeId3)
+        .accounts({
+          nftConfig: deriveNftConfig(CollectionType.Rwa, program.programId),
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+          recipient: authority.publicKey,
+          rwaIssuance: rwaIssuance3,
+          rwaRecord: rwaRecord3,
+          mint: mint3.publicKey,
+          tokenAccount: ata3,
+          metadata: metadata3,
+          masterEdition: masterEdition3,
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([authority, mint3])
+        .rpc();
+
+      // Transfer the token away so authority has 0 balance
+      const throwaway = Keypair.generate();
+      await airdrop(provider.connection, throwaway.publicKey);
+      const throwawayAta = getAssociatedTokenAddressSync(mint3.publicKey, throwaway.publicKey);
+
+      const createAtaIx = createAssociatedTokenAccountInstruction(
+        authority.publicKey,
+        throwawayAta,
+        throwaway.publicKey,
+        mint3.publicKey,
+      );
+      const transferIx = createTransferInstruction(ata3, throwawayAta, authority.publicKey, 1);
+      const tx = new Transaction().add(createAtaIx, transferIx);
+      await provider.sendAndConfirm(tx, [authority]);
+
+      // authority now has 0 tokens for mint3 — use_rwa should fail
+      try {
+        await program.methods
+          .useRwa()
+          .accounts({
+            rwaRecord: rwaRecord3,
+            mint: mint3.publicKey,
+            userTokenAccount: ata3,
+            user: authority.publicKey,
+          })
+          .signers([authority])
+          .rpc();
+        assert.fail("Should have thrown TokenNotOwned");
+      } catch (e: any) {
+        assert.ok(
+          e.message.includes("TokenNotOwned") ||
+            e.error?.errorCode?.code === "TokenNotOwned" ||
+            e.message.includes("0x"),
+          `Expected TokenNotOwned, got: ${e.message}`
+        );
+      }
+    });
+
     it("marks rwa as used", async () => {
       const rwaRecord = deriveRwaRecord(mint.publicKey, program.programId);
       const userAta = await getAssociatedTokenAddress(
@@ -645,9 +725,6 @@ describe("nft_program", () => {
           mint: mint.publicKey,
           userTokenAccount: userAta,
           user: authority.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
         })
         .signers([authority])
         .rpc();
@@ -672,9 +749,6 @@ describe("nft_program", () => {
             mint: mint.publicKey,
             userTokenAccount: userAta,
             user: authority.publicKey,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-            systemProgram: SystemProgram.programId,
           })
           .signers([authority])
           .rpc();

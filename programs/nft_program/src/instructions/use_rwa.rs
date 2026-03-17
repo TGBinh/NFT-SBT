@@ -1,8 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token::{Mint, Token, TokenAccount},
-};
+use anchor_spl::token::{Mint, TokenAccount};
 use crate::{errors::NftError, state::*};
 
 pub fn handler(ctx: Context<UseRwa>) -> Result<()> {
@@ -12,6 +9,8 @@ pub fn handler(ctx: Context<UseRwa>) -> Result<()> {
     require!(!record.is_used, NftError::AlreadyUsed);
 
     // 2. Check user holds the token
+    // Any current holder of the NFT may mark it used — ownership at use time is
+    // proven by the token balance check, not by comparing to owner_at_mint.
     require!(
         ctx.accounts.user_token_account.amount >= 1,
         NftError::TokenNotOwned
@@ -31,6 +30,7 @@ pub struct UseRwa<'info> {
         mut,
         seeds = [RWA_RECORD_SEED, mint.key().as_ref()],
         bump = rwa_record.bump,
+        constraint = rwa_record.mint == mint.key() @ NftError::InvalidMint,
     )]
     pub rwa_record: Account<'info, RwaRecord>,
 
@@ -47,8 +47,4 @@ pub struct UseRwa<'info> {
     /// The user who holds the NFT and signs this transaction
     #[account(mut)]
     pub user: Signer<'info>,
-
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
 }
