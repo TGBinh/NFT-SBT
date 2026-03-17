@@ -22,4 +22,19 @@ pub mod sbt_program {
     pub fn update_event(ctx: Context<UpdateEvent>, active: bool) -> Result<()> {
         instructions::update_event::handler(ctx, active)
     }
+    pub fn create_challenge(
+        ctx: Context<CreateChallenge>,
+        challenge_id: [u8; 32],
+        name: String,
+        symbol: String,
+        uri_accepted: String,
+        uri_mission: String,
+        uri_complete: String,
+        total_missions: u8,
+    ) -> Result<()> {
+        instructions::create_challenge::handler(ctx, challenge_id, name, symbol, uri_accepted, uri_mission, uri_complete, total_missions)
+    }
+    pub fn update_challenge(ctx: Context<UpdateChallenge>, active: bool) -> Result<()> {
+        instructions::update_challenge::handler(ctx, active)
+    }
 }
