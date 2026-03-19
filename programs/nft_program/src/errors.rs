@@ -28,4 +28,6 @@ pub enum NftError {
     MetadataAlreadyExists,
     #[msg("Invalid mint (decimals must be 0)")]
     InvalidMint,
+    #[msg("Rally is still active — deactivate it first")]
+    StillActive,
 }

@@ -21,8 +21,14 @@ pub mod sbt_program {
     pub fn create_event(ctx: Context<CreateEvent>, event_id: [u8; 32], name: String, symbol: String, uri: String) -> Result<()> {
         instructions::create_event::handler(ctx, event_id, name, symbol, uri)
     }
-    pub fn update_event(ctx: Context<UpdateEvent>, active: bool) -> Result<()> {
-        instructions::update_event::handler(ctx, active)
+    pub fn update_event(
+        ctx: Context<UpdateEvent>,
+        active: bool,
+        name: Option<String>,
+        symbol: Option<String>,
+        uri: Option<String>,
+    ) -> Result<()> {
+        instructions::update_event::handler(ctx, active, name, symbol, uri)
     }
     pub fn create_challenge(
         ctx: Context<CreateChallenge>,
@@ -36,8 +42,16 @@ pub mod sbt_program {
     ) -> Result<()> {
         instructions::create_challenge::handler(ctx, challenge_id, name, symbol, uri_accepted, uri_mission, uri_complete, total_missions)
     }
-    pub fn update_challenge(ctx: Context<UpdateChallenge>, active: bool) -> Result<()> {
-        instructions::update_challenge::handler(ctx, active)
+    pub fn update_challenge(
+        ctx: Context<UpdateChallenge>,
+        active: bool,
+        name: Option<String>,
+        symbol: Option<String>,
+        uri_accepted: Option<String>,
+        uri_mission: Option<String>,
+        uri_complete: Option<String>,
+    ) -> Result<()> {
+        instructions::update_challenge::handler(ctx, active, name, symbol, uri_accepted, uri_mission, uri_complete)
     }
     pub fn mint_human_capital(ctx: Context<MintHumanCapital>, name: String, issuer: String, uri: String) -> Result<()> {
         instructions::mint_human_capital::handler(ctx, name, issuer, uri)
@@ -61,5 +75,14 @@ pub mod sbt_program {
     }
     pub fn verify_sbt(ctx: Context<VerifySbt>) -> Result<()> {
         instructions::verify_sbt::handler(ctx)
+    }
+    pub fn transfer_authority(ctx: Context<TransferAuthority>, sbt_type: u8, new_authority: Pubkey) -> Result<()> {
+        instructions::transfer_authority::handler(ctx, sbt_type, new_authority)
+    }
+    pub fn close_event(ctx: Context<CloseEvent>) -> Result<()> {
+        instructions::close_event::handler(ctx)
+    }
+    pub fn close_challenge(ctx: Context<CloseChallenge>) -> Result<()> {
+        instructions::close_challenge::handler(ctx)
     }
 }

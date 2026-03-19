@@ -197,7 +197,7 @@ describe("nft_program", () => {
 
     it("update_rally sets active = false", async () => {
       await program.methods
-        .updateRally(false)
+        .updateRally(false, null, null, null, null)
         .accounts({
           rallyConfig: rallyConfigPda,
           authority: authority.publicKey,
@@ -208,7 +208,7 @@ describe("nft_program", () => {
       assert.equal(cfg.active, false);
       // restore
       await program.methods
-        .updateRally(true)
+        .updateRally(true, null, null, null, null)
         .accounts({ rallyConfig: rallyConfigPda, authority: authority.publicKey })
         .signers([authority])
         .rpc();
@@ -758,6 +758,269 @@ describe("nft_program", () => {
           e.message.includes("AlreadyUsed") ||
             e.error?.errorCode?.code === "AlreadyUsed",
           `Expected AlreadyUsed, got: ${e.message}`
+        );
+      }
+    });
+  });
+
+  describe("transfer_authority (nft)", () => {
+    it("authority can transfer to new wallet and back", async () => {
+      const newAuth = Keypair.generate();
+      const ct = CollectionType.Rwa;
+      const configPda = deriveNftConfig(ct, program.programId);
+
+      await program.methods
+        .transferAuthority(ct, newAuth.publicKey)
+        .accounts({ config: configPda, authority: authority.publicKey })
+        .signers([authority])
+        .rpc();
+
+      const cfg = await program.account.nftConfig.fetch(configPda);
+      assert.strictEqual(cfg.authority.toBase58(), newAuth.publicKey.toBase58());
+
+      // Restore
+      await program.methods
+        .transferAuthority(ct, authority.publicKey)
+        .accounts({ config: configPda, authority: newAuth.publicKey })
+        .signers([newAuth])
+        .rpc();
+
+      const restored = await program.account.nftConfig.fetch(configPda);
+      assert.strictEqual(restored.authority.toBase58(), authority.publicKey.toBase58());
+    });
+
+    it("Fail: non-authority cannot transfer", async () => {
+      const impostor = Keypair.generate();
+      const configPda = deriveNftConfig(CollectionType.Rwa, program.programId);
+      try {
+        await program.methods
+          .transferAuthority(CollectionType.Rwa, impostor.publicKey)
+          .accounts({ config: configPda, authority: impostor.publicKey })
+          .signers([impostor])
+          .rpc();
+        assert.fail("Should have thrown");
+      } catch (e: any) {
+        assert.include(e.message, "Unauthorized");
+      }
+    });
+  });
+
+  describe("update_rally metadata", () => {
+    const rid = toId("rally-meta-upd-01");
+    const rPda = deriveRallyConfig(rid, program.programId);
+
+    before(async () => {
+      try {
+        await program.methods
+          .createRally(rid, "OldRally", "OR", "https://old-s.json", "https://old-c.json", 3)
+          .accounts({
+            config: deriveNftConfig(CollectionType.StampRally, program.programId),
+            rallyConfig: rPda,
+            authority: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([authority])
+          .rpc();
+      } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
+    });
+
+    it("updates name, symbol, URIs", async () => {
+      await program.methods
+        .updateRally(true, "NewRally", "NR", "https://new-s.json", "https://new-c.json")
+        .accounts({ rallyConfig: rPda, authority: authority.publicKey })
+        .signers([authority])
+        .rpc();
+      const cfg = await program.account.rallyConfig.fetch(rPda);
+      assert.equal(cfg.name, "NewRally");
+      assert.equal(cfg.symbol, "NR");
+      assert.equal(cfg.uriStamp, "https://new-s.json");
+      assert.equal(cfg.uriComplete, "https://new-c.json");
+    });
+
+    it("passes null to keep existing values", async () => {
+      await program.methods
+        .updateRally(false, null, null, null, null)
+        .accounts({ rallyConfig: rPda, authority: authority.publicKey })
+        .signers([authority])
+        .rpc();
+      const cfg = await program.account.rallyConfig.fetch(rPda);
+      assert.equal(cfg.name, "NewRally"); // unchanged
+      assert.isFalse(cfg.active);
+      // restore
+      await program.methods
+        .updateRally(true, null, null, null, null)
+        .accounts({ rallyConfig: rPda, authority: authority.publicKey })
+        .signers([authority])
+        .rpc();
+    });
+  });
+
+  describe("burn_rwa", () => {
+    const burnChallengeId = toId("burn-rwa-001");
+    let burnMint: Keypair;
+
+    before(() => { burnMint = Keypair.generate(); });
+
+    it("recipient can burn RWA and close RwaRecord", async () => {
+      const rwaIssuance = deriveRwaIssuance(burnChallengeId, recipient.publicKey, program.programId);
+      const rwaRecord = deriveRwaRecord(burnMint.publicKey, program.programId);
+      const recipientAta = await getAssociatedTokenAddress(burnMint.publicKey, recipient.publicKey);
+
+      await program.methods
+        .mintRwa("Burn RWA", "BRWA", "https://burn.json", 0, burnChallengeId)
+        .accounts({
+          nftConfig: deriveNftConfig(CollectionType.Rwa, program.programId),
+          authority: authority.publicKey,
+          payer: authority.publicKey,
+          recipient: recipient.publicKey,
+          rwaIssuance,
+          rwaRecord,
+          mint: burnMint.publicKey,
+          tokenAccount: recipientAta,
+          metadata: deriveMetadata(burnMint.publicKey),
+          masterEdition: deriveMasterEdition(burnMint.publicKey),
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([authority, burnMint])
+        .rpc();
+
+      await program.methods
+        .burnRwa()
+        .accounts({
+          rwaRecord,
+          mint: burnMint.publicKey,
+          userTokenAccount: recipientAta,
+          user: recipient.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([recipient])
+        .rpc();
+
+      const info = await provider.connection.getAccountInfo(rwaRecord);
+      assert.isNull(info, "RwaRecord should be closed after burn");
+    });
+  });
+
+  describe("burn_stamp", () => {
+    const burnRallyId = toId("burn-stamp-rl-01");
+    let burnMint: Keypair;
+
+    before(() => { burnMint = Keypair.generate(); });
+
+    it("holder can burn Stamp and close StampRecord", async () => {
+      const rallyPda = deriveRallyConfig(burnRallyId, program.programId);
+      const stampParticipation = deriveStampParticipation(burnRallyId, 0, authority.publicKey, program.programId);
+      const stampRecord = deriveStampRecord(burnMint.publicKey, program.programId);
+      const authorityAta = await getAssociatedTokenAddress(burnMint.publicKey, authority.publicKey);
+
+      try {
+        await program.methods
+          .createRally(burnRallyId, "BurnRally", "BR", "https://bs.json", "https://bc.json", 3)
+          .accounts({
+            config: deriveNftConfig(CollectionType.StampRally, program.programId),
+            rallyConfig: rallyPda,
+            authority: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([authority])
+          .rpc();
+      } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
+
+      await program.methods
+        .mintStamp(0, "BurnStamp", "BS", 0)
+        .accounts({
+          nftConfig: deriveNftConfig(CollectionType.StampRally, program.programId),
+          rallyConfig: rallyPda,
+          stampParticipation,
+          stampRecord,
+          authority: authority.publicKey,
+          recipient: authority.publicKey,
+          mint: burnMint.publicKey,
+          recipientTokenAccount: authorityAta,
+          metadata: deriveMetadata(burnMint.publicKey),
+          masterEdition: deriveMasterEdition(burnMint.publicKey),
+          tokenMetadataProgram: METADATA_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([authority, burnMint])
+        .rpc();
+
+      await program.methods
+        .burnStamp()
+        .accounts({
+          stampRecord,
+          mint: burnMint.publicKey,
+          userTokenAccount: authorityAta,
+          user: authority.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([authority])
+        .rpc();
+
+      const info = await provider.connection.getAccountInfo(stampRecord);
+      assert.isNull(info, "StampRecord should be closed after burn");
+    });
+  });
+
+  describe("close_rally", () => {
+    it("authority can close an inactive rally", async () => {
+      const rid = toId("close-rally-001");
+      const rPda = deriveRallyConfig(rid, program.programId);
+      await program.methods
+        .createRally(rid, "CloseRally", "CR", "https://cs.json", "https://cc.json", 2)
+        .accounts({
+          config: deriveNftConfig(CollectionType.StampRally, program.programId),
+          rallyConfig: rPda,
+          authority: authority.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([authority])
+        .rpc();
+      await program.methods
+        .updateRally(false, null, null, null, null)
+        .accounts({ rallyConfig: rPda, authority: authority.publicKey })
+        .signers([authority])
+        .rpc();
+      await program.methods
+        .closeRally()
+        .accounts({ rallyConfig: rPda, authority: authority.publicKey })
+        .signers([authority])
+        .rpc();
+      const info = await provider.connection.getAccountInfo(rPda);
+      assert.isNull(info, "RallyConfig should be closed");
+    });
+
+    it("Fail: cannot close an active rally", async () => {
+      const rid = toId("close-active-rl");
+      const rPda = deriveRallyConfig(rid, program.programId);
+      await program.methods
+        .createRally(rid, "ActiveRally", "AR", "https://as.json", "https://ac.json", 2)
+        .accounts({
+          config: deriveNftConfig(CollectionType.StampRally, program.programId),
+          rallyConfig: rPda,
+          authority: authority.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([authority])
+        .rpc();
+      try {
+        await program.methods
+          .closeRally()
+          .accounts({ rallyConfig: rPda, authority: authority.publicKey })
+          .signers([authority])
+          .rpc();
+        assert.fail("Should have thrown");
+      } catch (e: any) {
+        assert.ok(
+          e.message.includes("StillActive") || e.error?.errorCode?.code === "StillActive",
+          `Expected StillActive, got: ${e.message}`
         );
       }
     });

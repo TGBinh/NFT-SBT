@@ -28,8 +28,15 @@ pub mod nft_program {
         instructions::create_rally::handler(ctx, rally_id, name, symbol, uri_stamp, uri_complete, total_checkpoints)
     }
 
-    pub fn update_rally(ctx: Context<UpdateRally>, active: bool) -> Result<()> {
-        instructions::update_rally::handler(ctx, active)
+    pub fn update_rally(
+        ctx: Context<UpdateRally>,
+        active: bool,
+        name: Option<String>,
+        symbol: Option<String>,
+        uri_stamp: Option<String>,
+        uri_complete: Option<String>,
+    ) -> Result<()> {
+        instructions::update_rally::handler(ctx, active, name, symbol, uri_stamp, uri_complete)
     }
 
     pub fn mint_rwa(
@@ -55,5 +62,17 @@ pub mod nft_program {
 
     pub fn use_rwa(ctx: Context<UseRwa>) -> Result<()> {
         instructions::use_rwa::handler(ctx)
+    }
+    pub fn transfer_authority(ctx: Context<TransferAuthority>, collection_type: u8, new_authority: Pubkey) -> Result<()> {
+        instructions::transfer_authority::handler(ctx, collection_type, new_authority)
+    }
+    pub fn burn_rwa(ctx: Context<BurnRwa>) -> Result<()> {
+        instructions::burn_rwa::handler(ctx)
+    }
+    pub fn burn_stamp(ctx: Context<BurnStamp>) -> Result<()> {
+        instructions::burn_stamp::handler(ctx)
+    }
+    pub fn close_rally(ctx: Context<CloseRally>) -> Result<()> {
+        instructions::close_rally::handler(ctx)
     }
 }

@@ -30,4 +30,6 @@ pub enum SbtError {
     InvalidMissionIndex,
     #[msg("total_missions must be between 1 and 254")]
     InvalidTotalMissions,
+    #[msg("Event or challenge is still active — deactivate it first")]
+    StillActive,
 }

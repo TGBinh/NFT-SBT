@@ -142,13 +142,13 @@ describe("sbt_program", () => {
 
     it("update_event sets active = false", async () => {
       await program.methods
-        .updateEvent(false)
+        .updateEvent(false, null, null, null)
         .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey })
         .rpc();
       const cfg = await program.account.eventConfig.fetch(eventConfigPda);
       assert.equal(cfg.active, false);
       // restore
-      await program.methods.updateEvent(true)
+      await program.methods.updateEvent(true, null, null, null)
         .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
     });
 
@@ -156,7 +156,7 @@ describe("sbt_program", () => {
       const fake = Keypair.generate();
       await airdrop(provider.connection, fake.publicKey);
       try {
-        await program.methods.updateEvent(false)
+        await program.methods.updateEvent(false, null, null, null)
           .accounts({ eventConfig: eventConfigPda, authority: fake.publicKey })
           .signers([fake]).rpc();
         assert.fail("Expected Unauthorized");
@@ -200,13 +200,13 @@ describe("sbt_program", () => {
 
     it("update_challenge sets active = false", async () => {
       await program.methods
-        .updateChallenge(false)
+        .updateChallenge(false, null, null, null, null, null)
         .accounts({ challengeConfig: challengeConfigPda, authority: authority.publicKey })
         .rpc();
       const cfg = await program.account.challengeConfig.fetch(challengeConfigPda);
       assert.equal(cfg.active, false);
       // restore
-      await program.methods.updateChallenge(true)
+      await program.methods.updateChallenge(true, null, null, null, null, null)
         .accounts({ challengeConfig: challengeConfigPda, authority: authority.publicKey }).rpc();
     });
 
@@ -393,7 +393,7 @@ describe("sbt_program", () => {
 
     it("rejects mint when event is inactive", async () => {
       // First deactivate the event
-      await program.methods.updateEvent(false)
+      await program.methods.updateEvent(false, null, null, null)
         .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
 
       const mintKp3 = Keypair.generate();
@@ -424,7 +424,7 @@ describe("sbt_program", () => {
         assert.ok(e.message.includes("NotActive") || e.message.includes("2012"));
       } finally {
         // restore
-        await program.methods.updateEvent(true)
+        await program.methods.updateEvent(true, null, null, null)
           .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
       }
     });
@@ -694,6 +694,219 @@ describe("sbt_program", () => {
       } catch (e: any) {
         assert.ok(e.message.includes("AlreadyRevoked") || e.message.includes("2005"));
       }
+    });
+  });
+
+  describe("transfer_authority (sbt)", () => {
+    it("Authority can transfer to new wallet and back", async () => {
+      const newAuthority = Keypair.generate();
+      const sbtType = 0; // HumanCapital
+      const configPda = deriveSbtConfig(sbtType, program.programId);
+
+      await program.methods
+        .transferAuthority(sbtType, newAuthority.publicKey)
+        .accounts({ config: configPda, authority: provider.wallet.publicKey })
+        .rpc();
+
+      const config = await program.account.sbtConfig.fetch(configPda);
+      assert.strictEqual(config.authority.toBase58(), newAuthority.publicKey.toBase58());
+
+      // Restore original authority
+      await program.methods
+        .transferAuthority(sbtType, provider.wallet.publicKey)
+        .accounts({ config: configPda, authority: newAuthority.publicKey })
+        .signers([newAuthority])
+        .rpc();
+
+      const restored = await program.account.sbtConfig.fetch(configPda);
+      assert.strictEqual(restored.authority.toBase58(), provider.wallet.publicKey.toBase58());
+    });
+
+    it("Fail: non-authority cannot transfer", async () => {
+      const impostor = Keypair.generate();
+      const configPda = deriveSbtConfig(0, program.programId);
+      try {
+        await program.methods
+          .transferAuthority(0, impostor.publicKey)
+          .accounts({ config: configPda, authority: impostor.publicKey })
+          .signers([impostor])
+          .rpc();
+        assert.fail("Should have thrown");
+      } catch (e: any) {
+        assert.include(e.message, "Unauthorized");
+      }
+    });
+  });
+
+  describe("update_event metadata", () => {
+    const eventId = toId("event-meta-upd-01");
+    const eventPda = deriveEventConfig(eventId, program.programId);
+
+    before(async () => {
+      try {
+        await program.methods
+          .createEvent(eventId, "OldName", "OLD", "https://old.json")
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+            eventConfig: eventPda,
+            authority: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+      } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
+    });
+
+    it("updates name, symbol, uri", async () => {
+      await program.methods
+        .updateEvent(true, "NewName", "NEW", "https://new.json")
+        .accounts({ eventConfig: eventPda, authority: authority.publicKey })
+        .rpc();
+      const cfg = await program.account.eventConfig.fetch(eventPda);
+      assert.equal(cfg.name, "NewName");
+      assert.equal(cfg.symbol, "NEW");
+      assert.equal(cfg.uri, "https://new.json");
+      assert.isTrue(cfg.active);
+    });
+
+    it("passes null to keep existing values", async () => {
+      await program.methods
+        .updateEvent(false, null, null, null)
+        .accounts({ eventConfig: eventPda, authority: authority.publicKey })
+        .rpc();
+      const cfg = await program.account.eventConfig.fetch(eventPda);
+      assert.equal(cfg.name, "NewName"); // unchanged from previous test
+      assert.isFalse(cfg.active);
+      // restore
+      await program.methods
+        .updateEvent(true, null, null, null)
+        .accounts({ eventConfig: eventPda, authority: authority.publicKey })
+        .rpc();
+    });
+  });
+
+  describe("update_challenge metadata", () => {
+    const cid = toId("challenge-meta-01");
+    const cPda = deriveChallengeConfig(cid, program.programId);
+
+    before(async () => {
+      try {
+        await program.methods
+          .createChallenge(cid, "OldC", "OC", "https://a.json", "https://b.json", "https://c.json", 2)
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+            challengeConfig: cPda,
+            authority: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+      } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
+    });
+
+    it("updates name and URIs", async () => {
+      await program.methods
+        .updateChallenge(true, "NewC", "NC", "https://a2.json", "https://b2.json", "https://c2.json")
+        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .rpc();
+      const cfg = await program.account.challengeConfig.fetch(cPda);
+      assert.equal(cfg.name, "NewC");
+      assert.equal(cfg.uriAccepted, "https://a2.json");
+      assert.equal(cfg.uriMission, "https://b2.json");
+      assert.equal(cfg.uriComplete, "https://c2.json");
+    });
+
+    it("passes null to keep existing values", async () => {
+      await program.methods
+        .updateChallenge(false, null, null, null, null, null)
+        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .rpc();
+      const cfg = await program.account.challengeConfig.fetch(cPda);
+      assert.equal(cfg.name, "NewC"); // unchanged
+      assert.isFalse(cfg.active);
+      // restore
+      await program.methods
+        .updateChallenge(true, null, null, null, null, null)
+        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .rpc();
+    });
+  });
+
+  describe("close_event", () => {
+    it("authority can close an inactive event", async () => {
+      const eid = toId("close-event-001");
+      const ePda = deriveEventConfig(eid, program.programId);
+      await program.methods
+        .createEvent(eid, "CloseMe", "CL", "https://close.json")
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: ePda,
+          authority: authority.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      // deactivate
+      await program.methods
+        .updateEvent(false, null, null, null)
+        .accounts({ eventConfig: ePda, authority: authority.publicKey })
+        .rpc();
+      // close
+      await program.methods
+        .closeEvent()
+        .accounts({ eventConfig: ePda, authority: authority.publicKey })
+        .rpc();
+      const info = await provider.connection.getAccountInfo(ePda);
+      assert.isNull(info, "EventConfig should be closed");
+    });
+
+    it("Fail: cannot close an active event", async () => {
+      const eid = toId("close-active-evt");
+      const ePda = deriveEventConfig(eid, program.programId);
+      await program.methods
+        .createEvent(eid, "Active", "ACT", "https://active.json")
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: ePda,
+          authority: authority.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      try {
+        await program.methods
+          .closeEvent()
+          .accounts({ eventConfig: ePda, authority: authority.publicKey })
+          .rpc();
+        assert.fail("Should have thrown");
+      } catch (e: any) {
+        assert.ok(
+          e.message.includes("StillActive") || e.error?.errorCode?.code === "StillActive",
+          `Expected StillActive, got: ${e.message}`
+        );
+      }
+    });
+  });
+
+  describe("close_challenge", () => {
+    it("authority can close an inactive challenge", async () => {
+      const cid = toId("close-chal-001");
+      const cPda = deriveChallengeConfig(cid, program.programId);
+      await program.methods
+        .createChallenge(cid, "CloseChallenge", "CC", "https://a.json", "https://b.json", "https://c.json", 2)
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          challengeConfig: cPda,
+          authority: authority.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      await program.methods
+        .updateChallenge(false, null, null, null, null, null)
+        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .rpc();
+      await program.methods
+        .closeChallenge()
+        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .rpc();
+      const info = await provider.connection.getAccountInfo(cPda);
+      assert.isNull(info, "ChallengeConfig should be closed");
     });
   });
 });

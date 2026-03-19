@@ -9,6 +9,9 @@ pub mod mint_challenge_accepted;
 pub mod mint_challenge_mission;
 pub mod revoke_sbt;
 pub mod verify_sbt;
+pub mod transfer_authority;
+pub mod close_event;
+pub mod close_challenge;
 
 pub use initialize_config::*;
 pub use create_event::*;
@@ -21,3 +24,6 @@ pub use mint_challenge_accepted::*;
 pub use mint_challenge_mission::*;
 pub use revoke_sbt::*;
 pub use verify_sbt::*;
+pub use transfer_authority::*;
+pub use close_event::*;
+pub use close_challenge::*;
