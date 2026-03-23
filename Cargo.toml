@@ -4,6 +4,15 @@ members = [
 ]
 resolver = "2"
 
+# Workaround for bug in solana-zk-token-sdk 3.1.11:
+# COMMITMENT_MAX_FEE_BASIS_POINTS and COMMITMENT_MAX_DELTA_RANGE in
+# src/instruction/transfer/with_fee.rs are missing #[cfg(not(target_os = "solana"))]
+# causing compilation failure on SBF target.
+# Remove this patch once a fixed version is published on crates.io.
+# Upstream issue: https://github.com/anza-xyz/agave
+[patch.crates-io]
+solana-zk-token-sdk = { path = "vendor/solana-zk-token-sdk" }
+
 [profile.release]
 overflow-checks = true
 lto = "fat"
