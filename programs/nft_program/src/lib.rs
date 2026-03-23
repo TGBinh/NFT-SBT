@@ -33,17 +33,17 @@ pub mod nft_program {
     pub fn mint_stamp(ctx: Context<MintStamp>, checkpoint_index: u8) -> Result<()> {
         instructions::mint_stamp::handler(ctx, checkpoint_index)
     }
-    pub fn use_rwa(ctx: Context<UseRwa>) -> Result<()> {
-        instructions::use_rwa::handler(ctx)
+    pub fn use_rwa(ctx: Context<UseRwa>, challenge_id: [u8; 32]) -> Result<()> {
+        instructions::use_rwa::handler(ctx, challenge_id)
     }
     pub fn transfer_authority(ctx: Context<TransferAuthority>, collection_type: u8, new_authority: Pubkey) -> Result<()> {
         instructions::transfer_authority::handler(ctx, collection_type, new_authority)
     }
-    pub fn burn_rwa(ctx: Context<BurnRwa>) -> Result<()> {
-        instructions::burn_rwa::handler(ctx)
+    pub fn burn_rwa(ctx: Context<BurnRwa>, challenge_id: [u8; 32]) -> Result<()> {
+        instructions::burn_rwa::handler(ctx, challenge_id)
     }
-    pub fn burn_stamp(ctx: Context<BurnStamp>) -> Result<()> {
-        instructions::burn_stamp::handler(ctx)
+    pub fn burn_stamp(ctx: Context<BurnStamp>, checkpoint_index: u8) -> Result<()> {
+        instructions::burn_stamp::handler(ctx, checkpoint_index)
     }
     pub fn close_rally(ctx: Context<CloseRally>) -> Result<()> {
         instructions::close_rally::handler(ctx)

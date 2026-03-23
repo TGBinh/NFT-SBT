@@ -2,11 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, CloseAccount, Mint, Token, TokenAccount};
 use crate::{errors::NftError, state::*};
 
-pub fn handler(ctx: Context<BurnStamp>) -> Result<()> {
-    require!(
-        ctx.accounts.user_token_account.amount >= 1,
-        NftError::TokenNotOwned
-    );
+pub fn handler(ctx: Context<BurnStamp>, checkpoint_index: u8) -> Result<()> {
+    require!(ctx.accounts.user_token_account.amount >= 1, NftError::TokenNotOwned);
 
     token::burn(
         CpiContext::new(
@@ -31,23 +28,35 @@ pub fn handler(ctx: Context<BurnStamp>) -> Result<()> {
         ),
     )?;
 
-    // StampRecord is closed by Anchor `close` constraint — rent returned to user
-    msg!("Stamp NFT burned. Mint: {}", ctx.accounts.mint.key());
+    // stamp_participation closed by Anchor `close` constraint — rent returned to user
+    msg!("Stamp SFT burned. Checkpoint: {}", checkpoint_index);
     Ok(())
 }
 
 #[derive(Accounts)]
+#[instruction(checkpoint_index: u8)]
 pub struct BurnStamp<'info> {
     #[account(
         mut,
-        seeds = [STAMP_RECORD_SEED, mint.key().as_ref()],
-        bump = stamp_record.bump,
-        constraint = stamp_record.mint == mint.key() @ NftError::InvalidMint,
+        seeds = [STAMP_PARTICIPATION_SEED, rally_config.rally_id.as_ref(), &[checkpoint_index], user.key().as_ref()],
+        bump = stamp_participation.bump,
         close = user,
     )]
-    pub stamp_record: Account<'info, StampRecord>,
+    pub stamp_participation: Account<'info, StampParticipation>,
 
-    #[account(mut)]
+    #[account(seeds = [RALLY_CONFIG_SEED, rally_config.rally_id.as_ref()], bump = rally_config.bump)]
+    pub rally_config: Account<'info, RallyConfig>,
+
+    #[account(
+        seeds = [CHECKPOINT_MINT_SEED, rally_config.rally_id.as_ref(), &[checkpoint_index]],
+        bump = checkpoint_mint_account.bump,
+    )]
+    pub checkpoint_mint_account: Account<'info, CheckpointMint>,
+
+    #[account(
+        mut,
+        constraint = mint.key() == checkpoint_mint_account.sft_mint @ NftError::MintNotCreated
+    )]
     pub mint: Account<'info, Mint>,
 
     #[account(

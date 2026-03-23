@@ -1,6 +1,6 @@
 /**
  * mint-sbt.ts
- * Mints a Soulbound Token (SBT) on Solana Devnet using sbt_program (Token-2022).
+ * Mints a HumanCapital SBT on Solana Devnet using sbt_program (Token-2022).
  *
  * Usage:
  *   yarn mint:sbt [RECIPIENT_PUBKEY]
@@ -35,34 +35,68 @@ import * as path from "path";
 // SBT metadata config — edit before minting
 // ---------------------------------------------------------------------------
 const SBT_CONFIG = {
-  name: "Example SBT",
-  symbol: "EXSBT",
-  uri: "https://example.com/sbt-metadata.json",
+  name: "Example HumanCapital",
+  uri: "https://example.com/hc-metadata.json",
   issuer: "Example DAO",
 };
 
-function deriveSbtRecordPDA(mint: PublicKey, programId: PublicKey): PublicKey {
+const SBT_CONFIG_SEED = Buffer.from("sbt_config");
+const SBT_RECORD_SEED = Buffer.from("sbt_record");
+const PARTICIPATION_SEED = Buffer.from("participation");
+
+function deriveSbtConfigPDA(sbtType: number, programId: PublicKey): PublicKey {
   const [pda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("sbt_record"), mint.toBuffer()],
+    [SBT_CONFIG_SEED, Buffer.from([sbtType])],
     programId
   );
   return pda;
 }
 
-// Token-2022 ATA derivation (different from legacy SPL Token ATA)
-function getToken2022ATA(mint: PublicKey, owner: PublicKey): PublicKey {
-  return getAssociatedTokenAddressSync(
-    mint,
-    owner,
-    false,
-    TOKEN_2022_PROGRAM_ID
+// HumanCapital: seed = [sbt_record, mint_bytes, 0, recipient]
+function deriveSbtRecordPDA(
+  mintPubkey: PublicKey,
+  recipient: PublicKey,
+  programId: PublicKey
+): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [
+      SBT_RECORD_SEED,
+      mintPubkey.toBuffer(),
+      Buffer.from([0]),
+      recipient.toBuffer(),
+    ],
+    programId
   );
+  return pda;
+}
+
+// HumanCapital: seed = [participation, 0, [0u8;32], 0, recipient]
+function deriveParticipationPDA(
+  recipient: PublicKey,
+  programId: PublicKey
+): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [
+      PARTICIPATION_SEED,
+      Buffer.from([0]),
+      Buffer.alloc(32, 0),
+      Buffer.from([0]),
+      recipient.toBuffer(),
+    ],
+    programId
+  );
+  return pda;
+}
+
+// Token-2022 ATA
+function getToken2022ATA(mint: PublicKey, owner: PublicKey): PublicKey {
+  return getAssociatedTokenAddressSync(mint, owner, false, TOKEN_2022_PROGRAM_ID);
 }
 
 // ---------------------------------------------------------------------------
 async function main(): Promise<void> {
   console.log("===================================================");
-  console.log("   Mint SBT Script -- Solana Devnet (Token-2022)");
+  console.log("   Mint HumanCapital SBT -- Solana Devnet (Token-2022)");
   console.log("===================================================\n");
 
   // Setup provider
@@ -120,62 +154,60 @@ async function main(): Promise<void> {
   const programKp = Keypair.fromSecretKey(Uint8Array.from(programKpData));
   const programId = programKp.publicKey;
 
-  const program = new Program(idl, programId, provider);
+  idl.address = programId.toBase58();
+  const program = new Program(idl, provider);
   console.log(`  Program:   ${programId.toBase58()}\n`);
 
-  // Derive config PDA
-  const [configPDA] = PublicKey.findProgramAddressSync(
-    [Buffer.from("sbt_config")],
-    programId
-  );
+  // Derive SbtConfig PDA (type=0 for HumanCapital)
+  const sbtConfigPDA = deriveSbtConfigPDA(0, programId);
 
-  // Check / initialize config
+  // Check / initialize SbtConfig (type=0)
   try {
-    await (program.account as any).sbtConfig.fetch(configPDA);
-    console.log("  Config PDA already initialized:", configPDA.toBase58());
+    await (program.account as any).sbtConfig.fetch(sbtConfigPDA);
+    console.log("  SbtConfig PDA already initialized:", sbtConfigPDA.toBase58());
   } catch {
-    console.log("  Initializing SBT Config PDA...");
+    console.log("  Initializing SbtConfig PDA (type=0)...");
     await (program.methods as any)
-      .initializeConfig()
+      .initializeConfig(0)
       .accounts({
-        config: configPDA,
+        config: sbtConfigPDA,
         authority: wallet.publicKey,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
-    console.log("  Config PDA initialized:", configPDA.toBase58());
+    console.log("  SbtConfig PDA initialized:", sbtConfigPDA.toBase58());
   }
 
-  // Generate fresh mint keypair (caller controls the address)
+  // Generate fresh mint keypair (unique per HumanCapital recipient)
   const mintKeypair = Keypair.generate();
   console.log(`  New Mint:  ${mintKeypair.publicKey.toBase58()}`);
 
   // Derive all addresses
-  const sbtRecord = deriveSbtRecordPDA(mintKeypair.publicKey, programId);
-
-  // CRITICAL: Token-2022 ATA -- different address from legacy SPL Token ATA
+  const sbtRecord = deriveSbtRecordPDA(mintKeypair.publicKey, recipientPubkey, programId);
+  const participationRecord = deriveParticipationPDA(recipientPubkey, programId);
   const tokenAccount = getToken2022ATA(mintKeypair.publicKey, recipientPubkey);
 
-  console.log(`  SBT Record PDA: ${sbtRecord.toBase58()}`);
-  console.log(`  Token Account:  ${tokenAccount.toBase58()} (Token-2022 ATA)`);
+  console.log(`  SBT Record PDA:       ${sbtRecord.toBase58()}`);
+  console.log(`  Participation Record: ${participationRecord.toBase58()}`);
+  console.log(`  Token Account:        ${tokenAccount.toBase58()} (Token-2022 ATA)`);
 
-  // Mint SBT
-  console.log("\n  Minting SBT...");
+  // Mint HumanCapital SBT
+  console.log("\n  Minting HumanCapital SBT...");
   console.log(`  Name:    ${SBT_CONFIG.name}`);
-  console.log(`  Symbol:  ${SBT_CONFIG.symbol}`);
   console.log(`  URI:     ${SBT_CONFIG.uri}`);
   console.log(`  Issuer:  ${SBT_CONFIG.issuer}`);
 
   const tx = await (program.methods as any)
-    .mintSbt(SBT_CONFIG.name, SBT_CONFIG.symbol, SBT_CONFIG.uri, SBT_CONFIG.issuer)
+    .mintHumanCapital(SBT_CONFIG.name, SBT_CONFIG.issuer, SBT_CONFIG.uri)
     .accounts({
-      config: configPDA,
+      sbtConfig: sbtConfigPDA,
       authority: wallet.publicKey,
+      payer: wallet.publicKey,
       recipient: recipientPubkey,
+      sbtRecord,
+      participationRecord,
       mint: mintKeypair.publicKey,
       tokenAccount,
-      sbtRecord,
-      // SBT program uses Token-2022, NOT the legacy token program
       token2022Program: TOKEN_2022_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
@@ -192,27 +224,23 @@ async function main(): Promise<void> {
   const tokenState: string = parsed?.info?.state ?? "unknown";
   const tokenBalance: number = parsed?.info?.tokenAmount?.uiAmount ?? -1;
 
-  const mintInfo = await connection.getParsedAccountInfo(mintKeypair.publicKey);
-  const mintParsed = (mintInfo.value?.data as any)?.parsed;
-  const mintAuthority: string | null = mintParsed?.info?.mintAuthority ?? null;
-
   const record = await (program.account as any).sbtRecord.fetch(sbtRecord);
 
   // Output results
   console.log("\n===================================================");
-  console.log("   SBT Minted Successfully!");
+  console.log("   HumanCapital SBT Minted Successfully!");
   console.log("===================================================");
-  console.log(`  SBT Mint Address : ${mintKeypair.publicKey.toBase58()}`);
-  console.log(`  Recipient        : ${recipientPubkey.toBase58()}`);
-  console.log(`  Token Account    : ${tokenAccount.toBase58()}`);
-  console.log(`  SBT Record PDA   : ${sbtRecord.toBase58()}`);
-  console.log(`  Transaction      : ${tx}`);
+  console.log(`  SBT Mint Address    : ${mintKeypair.publicKey.toBase58()}`);
+  console.log(`  Recipient           : ${recipientPubkey.toBase58()}`);
+  console.log(`  Token Account       : ${tokenAccount.toBase58()}`);
+  console.log(`  SBT Record PDA      : ${sbtRecord.toBase58()}`);
+  console.log(`  Participation Record: ${participationRecord.toBase58()}`);
+  console.log(`  Transaction         : ${tx}`);
   console.log();
   console.log("  -- On-chain SBT Record --");
   console.log(`  Owner      : ${record.owner.toBase58()}`);
-  console.log(`  Mint       : ${record.mint.toBase58()}`);
-  console.log(`  Name       : ${record.name}`);
-  console.log(`  Symbol     : ${record.symbol}`);
+  console.log(`  SBT Type   : ${record.sbtType}`);
+  console.log(`  Collection : ${Buffer.from(record.collectionId).toString("hex")}`);
   console.log(`  Issuer     : ${record.issuer}`);
   console.log(`  Issued At  : ${new Date(record.issuedAt.toNumber() * 1000).toISOString()}`);
   console.log(`  Revoked    : ${record.revoked}`);
@@ -220,17 +248,12 @@ async function main(): Promise<void> {
   console.log("  -- Soulbound Verification --");
   console.log(`  Token Balance  : ${tokenBalance} (expected: 1)`);
   console.log(`  Account State  : ${tokenState} (expected: frozen)`);
-  console.log(`  Mint Authority : ${mintAuthority ?? "null"} (expected: null)`);
 
   if (tokenState === "frozen") {
     console.log("\n  SOULBOUND VERIFIED: Token account is frozen.");
     console.log("  NonTransferable extension also blocks all Token-2022 transfers.");
   } else {
     console.log("\n  WARNING: Token account is NOT frozen! Check sbt_program logic.");
-  }
-
-  if (mintAuthority === null) {
-    console.log("  SUPPLY LOCKED: Mint authority removed. Supply is permanently 1.");
   }
 
   console.log(

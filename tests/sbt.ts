@@ -9,7 +9,6 @@ import {
 } from "@solana/spl-token";
 import { assert } from "chai";
 
-// SBT type constants matching the Rust enum
 const SbtType = { HumanCapital: 0, Event: 1, ChallengeAccepted: 2, ChallengeMission: 3 };
 
 function toId(s: string): number[] {
@@ -39,9 +38,20 @@ function deriveChallengeConfig(challengeId: number[], programId: PublicKey): Pub
   )[0];
 }
 
-function deriveSbtRecord(mint: PublicKey, programId: PublicKey): PublicKey {
+// SFT model: seed = [sbt_record, collection_id (32b), mission_index, user]
+function deriveSbtRecord(
+  collectionId: number[] | Uint8Array,
+  missionIndex: number,
+  user: PublicKey,
+  programId: PublicKey
+): PublicKey {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("sbt_record"), mint.toBuffer()],
+    [
+      Buffer.from("sbt_record"),
+      Buffer.from(collectionId),
+      Buffer.from([missionIndex]),
+      user.toBuffer(),
+    ],
     programId
   )[0];
 }
@@ -83,6 +93,12 @@ describe("sbt_program", () => {
   const program = anchor.workspace.SbtProgram as Program<SbtProgram>;
   const authority = provider.wallet as anchor.Wallet;
 
+  // Shared SFT mints set by create_event / create_challenge, used by subsequent tests
+  let eventSftMint: PublicKey;
+  let challengeAcceptedMint: PublicKey;
+  let challengeMissionMint: PublicKey;
+  let challengeCompleteMint: PublicKey;
+
   describe("initialize_config", () => {
     it("creates SbtConfig PDA for HumanCapital type", async () => {
       const configPda = deriveSbtConfig(SbtType.HumanCapital, program.programId);
@@ -121,16 +137,20 @@ describe("sbt_program", () => {
     const eventId = toId("test-event-001");
     const eventConfigPda = deriveEventConfig(eventId, program.programId);
 
-    it("creates EventConfig PDA", async () => {
+    it("creates EventConfig PDA with SFT mint", async () => {
+      const sftMintKp = Keypair.generate();
       try {
         await program.methods
           .createEvent(eventId, "Test Event", "EVT", "https://example.com/event.json")
           .accounts({
             sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
             eventConfig: eventConfigPda,
+            sftMint: sftMintKp.publicKey,
             authority: authority.publicKey,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           })
+          .signers([sftMintKp])
           .rpc();
       } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
 
@@ -138,18 +158,32 @@ describe("sbt_program", () => {
       assert.equal(cfg.name, "Test Event");
       assert.equal(cfg.active, true);
       assert.equal(cfg.participantCount.toString(), "0");
+      eventSftMint = cfg.sftMint; // store for later tests
     });
 
     it("update_event sets active = false", async () => {
       await program.methods
         .updateEvent(false, null, null, null)
-        .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: eventConfigPda,
+          sftMint: eventSftMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
       const cfg = await program.account.eventConfig.fetch(eventConfigPda);
       assert.equal(cfg.active, false);
       // restore
       await program.methods.updateEvent(true, null, null, null)
-        .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: eventConfigPda,
+          sftMint: eventSftMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
+        .rpc();
     });
 
     it("rejects unauthorized update", async () => {
@@ -157,7 +191,13 @@ describe("sbt_program", () => {
       await airdrop(provider.connection, fake.publicKey);
       try {
         await program.methods.updateEvent(false, null, null, null)
-          .accounts({ eventConfig: eventConfigPda, authority: fake.publicKey })
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+            eventConfig: eventConfigPda,
+            sftMint: eventSftMint,
+            authority: fake.publicKey,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+          })
           .signers([fake]).rpc();
         assert.fail("Expected Unauthorized");
       } catch (e: any) {
@@ -170,7 +210,10 @@ describe("sbt_program", () => {
     const challengeId = toId("test-challenge-001");
     const challengeConfigPda = deriveChallengeConfig(challengeId, program.programId);
 
-    it("creates ChallengeConfig PDA", async () => {
+    it("creates ChallengeConfig PDA with 3 SFT mints", async () => {
+      const sftAccKp = Keypair.generate();
+      const sftMisKp = Keypair.generate();
+      const sftComKp = Keypair.generate();
       try {
         await program.methods
           .createChallenge(
@@ -183,11 +226,17 @@ describe("sbt_program", () => {
             3
           )
           .accounts({
-            sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+            sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+            sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
             challengeConfig: challengeConfigPda,
+            sftAcceptedMint: sftAccKp.publicKey,
+            sftMissionMint: sftMisKp.publicKey,
+            sftCompleteMint: sftComKp.publicKey,
             authority: authority.publicKey,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           })
+          .signers([sftAccKp, sftMisKp, sftComKp])
           .rpc();
       } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
 
@@ -196,39 +245,67 @@ describe("sbt_program", () => {
       assert.equal(cfg.totalMissions, 3);
       assert.equal(cfg.active, true);
       assert.equal(cfg.participantCount.toString(), "0");
+      // store for later tests
+      challengeAcceptedMint = cfg.sftAcceptedMint;
+      challengeMissionMint = cfg.sftMissionMint;
+      challengeCompleteMint = cfg.sftCompleteMint;
     });
 
     it("update_challenge sets active = false", async () => {
       await program.methods
         .updateChallenge(false, null, null, null, null, null)
-        .accounts({ challengeConfig: challengeConfigPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
+          challengeConfig: challengeConfigPda,
+          sftAcceptedMint: challengeAcceptedMint,
+          sftMissionMint: challengeMissionMint,
+          sftCompleteMint: challengeCompleteMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
       const cfg = await program.account.challengeConfig.fetch(challengeConfigPda);
       assert.equal(cfg.active, false);
       // restore
       await program.methods.updateChallenge(true, null, null, null, null, null)
-        .accounts({ challengeConfig: challengeConfigPda, authority: authority.publicKey }).rpc();
+        .accounts({
+          sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
+          challengeConfig: challengeConfigPda,
+          sftAcceptedMint: challengeAcceptedMint,
+          sftMissionMint: challengeMissionMint,
+          sftCompleteMint: challengeCompleteMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
+        .rpc();
     });
 
     it("rejects invalid total_missions (0)", async () => {
       const badId = toId("bad-challenge-000");
+      const m1 = Keypair.generate(), m2 = Keypair.generate(), m3 = Keypair.generate();
       try {
         await program.methods
           .createChallenge(
-            badId,
-            "Bad Challenge",
-            "BAD",
+            badId, "Bad Challenge", "BAD",
             "https://example.com/a.json",
             "https://example.com/m.json",
             "https://example.com/c.json",
             0
           )
           .accounts({
-            sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+            sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+            sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
             challengeConfig: deriveChallengeConfig(badId, program.programId),
+            sftAcceptedMint: m1.publicKey,
+            sftMissionMint: m2.publicKey,
+            sftCompleteMint: m3.publicKey,
             authority: authority.publicKey,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           })
+          .signers([m1, m2, m3])
           .rpc();
         assert.fail("Expected InvalidTotalMissions");
       } catch (e: any) {
@@ -247,7 +324,9 @@ describe("sbt_program", () => {
     });
 
     it("mints Human Capital SBT and creates on-chain record", async () => {
-      const sbtRecord = deriveSbtRecord(mintKp.publicKey, program.programId);
+      // HC uses mint pubkey bytes as collection_id (unique per user)
+      const collectionId = Array.from(mintKp.publicKey.toBytes());
+      const sbtRecord = deriveSbtRecord(collectionId, 0, recipient.publicKey, program.programId);
       const participationPda = deriveParticipation(
         SbtType.HumanCapital, toId(""), 0, recipient.publicKey, program.programId
       );
@@ -276,7 +355,6 @@ describe("sbt_program", () => {
       assert.ok(record.owner.equals(recipient.publicKey));
       assert.equal(record.sbtType, SbtType.HumanCapital);
       assert.equal(record.revoked, false);
-      assert.equal(record.name, "Taro Yamada");
 
       const bal = await provider.connection.getTokenAccountBalance(tokenAccount);
       assert.equal(bal.value.uiAmount, 1);
@@ -295,7 +373,7 @@ describe("sbt_program", () => {
             authority: authority.publicKey,
             payer: authority.publicKey,
             recipient: recipient.publicKey,
-            sbtRecord: deriveSbtRecord(mintKp2.publicKey, program.programId),
+            sbtRecord: deriveSbtRecord(Array.from(mintKp2.publicKey.toBytes()), 0, recipient.publicKey, program.programId),
             participationRecord: participationPda,
             mint: mintKp2.publicKey,
             tokenAccount: getToken2022ATA(mintKp2.publicKey, recipient.publicKey),
@@ -317,38 +395,35 @@ describe("sbt_program", () => {
     const eventId = toId("test-event-001");
     const eventConfigPda = deriveEventConfig(eventId, program.programId);
     const recipient2 = Keypair.generate();
-    let mintKp: Keypair;
 
     before(async () => {
       await airdrop(provider.connection, recipient2.publicKey);
-      mintKp = Keypair.generate();
     });
 
-    it("mints Event SBT and creates on-chain record", async () => {
-      const sbtRecord = deriveSbtRecord(mintKp.publicKey, program.programId);
+    it("mints Event SBT using shared SFT mint", async () => {
+      const sbtRecord = deriveSbtRecord(eventId, 0, recipient2.publicKey, program.programId);
       const participationPda = deriveParticipation(
         SbtType.Event, eventId, 0, recipient2.publicKey, program.programId
       );
-      const tokenAccount = getToken2022ATA(mintKp.publicKey, recipient2.publicKey);
+      const tokenAccount = getToken2022ATA(eventSftMint, recipient2.publicKey);
 
       await program.methods
-        .mintEventSbt("Alice", "EventOrg")
+        .mintEventSbt("EventOrg")
         .accounts({
           sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
           eventConfig: eventConfigPda,
+          sftMint: eventSftMint,
           authority: authority.publicKey,
           payer: authority.publicKey,
           recipient: recipient2.publicKey,
           sbtRecord,
           participationRecord: participationPda,
-          mint: mintKp.publicKey,
           tokenAccount,
           token2022Program: TOKEN_2022_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY,
         })
-        .signers([mintKp])
         .rpc();
 
       const record = await program.account.sbtRecord.fetch(sbtRecord);
@@ -361,29 +436,27 @@ describe("sbt_program", () => {
     });
 
     it("rejects duplicate Event SBT for same user+event", async () => {
-      const mintKp2 = Keypair.generate();
       const participationPda = deriveParticipation(
         SbtType.Event, eventId, 0, recipient2.publicKey, program.programId
       );
       try {
         await program.methods
-          .mintEventSbt("Alice", "EventOrg")
+          .mintEventSbt("EventOrg")
           .accounts({
             sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
             eventConfig: eventConfigPda,
+            sftMint: eventSftMint,
             authority: authority.publicKey,
             payer: authority.publicKey,
             recipient: recipient2.publicKey,
-            sbtRecord: deriveSbtRecord(mintKp2.publicKey, program.programId),
+            sbtRecord: deriveSbtRecord(eventId, 0, recipient2.publicKey, program.programId),
             participationRecord: participationPda,
-            mint: mintKp2.publicKey,
-            tokenAccount: getToken2022ATA(mintKp2.publicKey, recipient2.publicKey),
+            tokenAccount: getToken2022ATA(eventSftMint, recipient2.publicKey),
             token2022Program: TOKEN_2022_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             rent: SYSVAR_RENT_PUBKEY,
           })
-          .signers([mintKp2])
           .rpc();
         assert.fail("Expected duplicate rejection");
       } catch (e: any) {
@@ -392,40 +465,50 @@ describe("sbt_program", () => {
     });
 
     it("rejects mint when event is inactive", async () => {
-      // First deactivate the event
       await program.methods.updateEvent(false, null, null, null)
-        .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: eventConfigPda,
+          sftMint: eventSftMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
+        .rpc();
 
-      const mintKp3 = Keypair.generate();
       const recipient3 = Keypair.generate();
       await airdrop(provider.connection, recipient3.publicKey);
       try {
         await program.methods
-          .mintEventSbt("Bob", "EventOrg")
+          .mintEventSbt("EventOrg")
           .accounts({
             sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
             eventConfig: eventConfigPda,
+            sftMint: eventSftMint,
             authority: authority.publicKey,
             payer: authority.publicKey,
             recipient: recipient3.publicKey,
-            sbtRecord: deriveSbtRecord(mintKp3.publicKey, program.programId),
+            sbtRecord: deriveSbtRecord(eventId, 0, recipient3.publicKey, program.programId),
             participationRecord: deriveParticipation(SbtType.Event, eventId, 0, recipient3.publicKey, program.programId),
-            mint: mintKp3.publicKey,
-            tokenAccount: getToken2022ATA(mintKp3.publicKey, recipient3.publicKey),
+            tokenAccount: getToken2022ATA(eventSftMint, recipient3.publicKey),
             token2022Program: TOKEN_2022_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             rent: SYSVAR_RENT_PUBKEY,
           })
-          .signers([mintKp3])
           .rpc();
         assert.fail("Expected NotActive");
       } catch (e: any) {
         assert.ok(e.message.includes("NotActive") || e.message.includes("2012"));
       } finally {
-        // restore
         await program.methods.updateEvent(true, null, null, null)
-          .accounts({ eventConfig: eventConfigPda, authority: authority.publicKey }).rpc();
+          .accounts({
+            sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+            eventConfig: eventConfigPda,
+            sftMint: eventSftMint,
+            authority: authority.publicKey,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+          })
+          .rpc();
       }
     });
   });
@@ -434,38 +517,35 @@ describe("sbt_program", () => {
     const challengeId = toId("test-challenge-001");
     const challengeConfigPda = deriveChallengeConfig(challengeId, program.programId);
     const recipient3 = Keypair.generate();
-    let mintKp: Keypair;
 
     before(async () => {
       await airdrop(provider.connection, recipient3.publicKey);
-      mintKp = Keypair.generate();
     });
 
-    it("mints ChallengeAccepted SBT", async () => {
-      const sbtRecord = deriveSbtRecord(mintKp.publicKey, program.programId);
+    it("mints ChallengeAccepted SBT using shared accepted mint", async () => {
+      const sbtRecord = deriveSbtRecord(challengeId, 0, recipient3.publicKey, program.programId);
       const participationPda = deriveParticipation(
         SbtType.ChallengeAccepted, challengeId, 0, recipient3.publicKey, program.programId
       );
-      const tokenAccount = getToken2022ATA(mintKp.publicKey, recipient3.publicKey);
+      const tokenAccount = getToken2022ATA(challengeAcceptedMint, recipient3.publicKey);
 
       await program.methods
-        .mintChallengeAccepted("Bob", "ChallengeOrg")
+        .mintChallengeAccepted("ChallengeOrg")
         .accounts({
           sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
           challengeConfig: challengeConfigPda,
+          sftMint: challengeAcceptedMint,
           authority: authority.publicKey,
           payer: authority.publicKey,
           recipient: recipient3.publicKey,
           sbtRecord,
           participationRecord: participationPda,
-          mint: mintKp.publicKey,
           tokenAccount,
           token2022Program: TOKEN_2022_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY,
         })
-        .signers([mintKp])
         .rpc();
 
       const record = await program.account.sbtRecord.fetch(sbtRecord);
@@ -474,29 +554,27 @@ describe("sbt_program", () => {
     });
 
     it("rejects duplicate ChallengeAccepted SBT for same user+challenge", async () => {
-      const mintKp2 = Keypair.generate();
       const participationPda = deriveParticipation(
         SbtType.ChallengeAccepted, challengeId, 0, recipient3.publicKey, program.programId
       );
       try {
         await program.methods
-          .mintChallengeAccepted("Bob", "ChallengeOrg")
+          .mintChallengeAccepted("ChallengeOrg")
           .accounts({
             sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
             challengeConfig: challengeConfigPda,
+            sftMint: challengeAcceptedMint,
             authority: authority.publicKey,
             payer: authority.publicKey,
             recipient: recipient3.publicKey,
-            sbtRecord: deriveSbtRecord(mintKp2.publicKey, program.programId),
+            sbtRecord: deriveSbtRecord(challengeId, 0, recipient3.publicKey, program.programId),
             participationRecord: participationPda,
-            mint: mintKp2.publicKey,
-            tokenAccount: getToken2022ATA(mintKp2.publicKey, recipient3.publicKey),
+            tokenAccount: getToken2022ATA(challengeAcceptedMint, recipient3.publicKey),
             token2022Program: TOKEN_2022_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             rent: SYSVAR_RENT_PUBKEY,
           })
-          .signers([mintKp2])
           .rpc();
         assert.fail("Expected duplicate rejection");
       } catch (e: any) {
@@ -516,31 +594,31 @@ describe("sbt_program", () => {
 
     it("mints 3 mission SBTs and quest complete SBT without collision", async () => {
       for (const idx of [0, 1, 2, 255]) {
-        const mintKp = Keypair.generate();
-        const sbtRecord = deriveSbtRecord(mintKp.publicKey, program.programId);
+        const sbtRecord = deriveSbtRecord(challengeId, idx, recipient4.publicKey, program.programId);
         const participationPda = deriveParticipation(
           SbtType.ChallengeMission, challengeId, idx, recipient4.publicKey, program.programId
         );
-        const tokenAccount = getToken2022ATA(mintKp.publicKey, recipient4.publicKey);
+        // idx=255 uses the complete mint, others use mission mint
+        const sftMint = idx === 255 ? challengeCompleteMint : challengeMissionMint;
+        const tokenAccount = getToken2022ATA(sftMint, recipient4.publicKey);
 
         await program.methods
-          .mintChallengeMission(idx, "Carol", "ChallengeOrg")
+          .mintChallengeMission(idx, "ChallengeOrg")
           .accounts({
             sbtConfig: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
             challengeConfig: challengeConfigPda,
+            sftMint,
             authority: authority.publicKey,
             payer: authority.publicKey,
             recipient: recipient4.publicKey,
             sbtRecord,
             participationRecord: participationPda,
-            mint: mintKp.publicKey,
             tokenAccount,
             token2022Program: TOKEN_2022_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             rent: SYSVAR_RENT_PUBKEY,
           })
-          .signers([mintKp])
           .rpc();
 
         const record = await program.account.sbtRecord.fetch(sbtRecord);
@@ -550,28 +628,26 @@ describe("sbt_program", () => {
     });
 
     it("rejects out-of-range mission_index", async () => {
-      const mintKp = Keypair.generate();
       const recipient5 = Keypair.generate();
       await airdrop(provider.connection, recipient5.publicKey);
       try {
         await program.methods
-          .mintChallengeMission(100, "Dave", "ChallengeOrg")
+          .mintChallengeMission(100, "ChallengeOrg")
           .accounts({
             sbtConfig: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
             challengeConfig: challengeConfigPda,
+            sftMint: challengeMissionMint,
             authority: authority.publicKey,
             payer: authority.publicKey,
             recipient: recipient5.publicKey,
-            sbtRecord: deriveSbtRecord(mintKp.publicKey, program.programId),
+            sbtRecord: deriveSbtRecord(challengeId, 100, recipient5.publicKey, program.programId),
             participationRecord: deriveParticipation(SbtType.ChallengeMission, challengeId, 100, recipient5.publicKey, program.programId),
-            mint: mintKp.publicKey,
-            tokenAccount: getToken2022ATA(mintKp.publicKey, recipient5.publicKey),
+            tokenAccount: getToken2022ATA(challengeMissionMint, recipient5.publicKey),
             token2022Program: TOKEN_2022_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             rent: SYSVAR_RENT_PUBKEY,
           })
-          .signers([mintKp])
           .rpc();
         assert.fail("Expected InvalidMissionIndex");
       } catch (e: any) {
@@ -581,19 +657,19 @@ describe("sbt_program", () => {
   });
 
   describe("revoke_sbt and verify_sbt", () => {
-    // Uses mintKp from mint_human_capital test -- we need a fresh mint here
     const revokeRecipient = Keypair.generate();
     let revokeMintKp: Keypair;
     let revokeSbtRecord: PublicKey;
+    let revokeCollectionId: number[];
     let revokeTokenAccount: PublicKey;
 
     before(async () => {
       await airdrop(provider.connection, revokeRecipient.publicKey);
       revokeMintKp = Keypair.generate();
-      revokeSbtRecord = deriveSbtRecord(revokeMintKp.publicKey, program.programId);
+      revokeCollectionId = Array.from(revokeMintKp.publicKey.toBytes());
+      revokeSbtRecord = deriveSbtRecord(revokeCollectionId, 0, revokeRecipient.publicKey, program.programId);
       revokeTokenAccount = getToken2022ATA(revokeMintKp.publicKey, revokeRecipient.publicKey);
 
-      // Mint a Human Capital SBT to revoke
       const participationPda = deriveParticipation(
         SbtType.HumanCapital, toId(""), 0, revokeRecipient.publicKey, program.programId
       );
@@ -618,38 +694,41 @@ describe("sbt_program", () => {
     });
 
     it("verify_sbt succeeds for valid SBT", async () => {
-      await program.methods.verifySbt()
+      await program.methods
+        .verifySbt(revokeCollectionId, 0)
         .accounts({
           owner: revokeRecipient.publicKey,
-          mint: revokeMintKp.publicKey,
           sbtRecord: revokeSbtRecord,
         })
         .rpc();
     });
 
-    it("verify_sbt fails with wrong owner", async () => {
+    it("verify_sbt fails with non-existent record (wrong owner)", async () => {
       const wrongOwner = Keypair.generate();
+      // derives a PDA that doesn't exist → AccountNotInitialized
+      const wrongRecord = deriveSbtRecord(revokeCollectionId, 0, wrongOwner.publicKey, program.programId);
       try {
-        await program.methods.verifySbt()
+        await program.methods
+          .verifySbt(revokeCollectionId, 0)
           .accounts({
             owner: wrongOwner.publicKey,
-            mint: revokeMintKp.publicKey,
-            sbtRecord: revokeSbtRecord,
+            sbtRecord: wrongRecord,
           })
           .rpc();
-        assert.fail("Expected NotOwner");
+        assert.fail("Expected error");
       } catch (e: any) {
-        assert.ok(e.message.includes("NotOwner") || e.message.includes("2007"));
+        assert.ok(e.message.length > 0, "Expected an error for non-existent record");
       }
     });
 
     it("revoke_sbt burns token and marks record revoked", async () => {
       await program.methods
-        .revokeSbt(SbtType.HumanCapital)
+        .revokeSbt(SbtType.HumanCapital, 0)
         .accounts({
           sbtConfig: deriveSbtConfig(SbtType.HumanCapital, program.programId),
           authority: authority.publicKey,
-          mint: revokeMintKp.publicKey,
+          user: revokeRecipient.publicKey,
+          sftMint: revokeMintKp.publicKey,
           tokenAccount: revokeTokenAccount,
           sbtRecord: revokeSbtRecord,
           token2022Program: TOKEN_2022_PROGRAM_ID,
@@ -663,10 +742,10 @@ describe("sbt_program", () => {
 
     it("verify_sbt fails after revocation", async () => {
       try {
-        await program.methods.verifySbt()
+        await program.methods
+          .verifySbt(revokeCollectionId, 0)
           .accounts({
             owner: revokeRecipient.publicKey,
-            mint: revokeMintKp.publicKey,
             sbtRecord: revokeSbtRecord,
           })
           .rpc();
@@ -679,11 +758,12 @@ describe("sbt_program", () => {
     it("revoke_sbt fails on already-revoked SBT", async () => {
       try {
         await program.methods
-          .revokeSbt(SbtType.HumanCapital)
+          .revokeSbt(SbtType.HumanCapital, 0)
           .accounts({
             sbtConfig: deriveSbtConfig(SbtType.HumanCapital, program.programId),
             authority: authority.publicKey,
-            mint: revokeMintKp.publicKey,
+            user: revokeRecipient.publicKey,
+            sftMint: revokeMintKp.publicKey,
             tokenAccount: revokeTokenAccount,
             sbtRecord: revokeSbtRecord,
             token2022Program: TOKEN_2022_PROGRAM_ID,
@@ -700,7 +780,7 @@ describe("sbt_program", () => {
   describe("transfer_authority (sbt)", () => {
     it("Authority can transfer to new wallet and back", async () => {
       const newAuthority = Keypair.generate();
-      const sbtType = 0; // HumanCapital
+      const sbtType = SbtType.HumanCapital;
       const configPda = deriveSbtConfig(sbtType, program.programId);
 
       await program.methods
@@ -724,10 +804,10 @@ describe("sbt_program", () => {
 
     it("Fail: non-authority cannot transfer", async () => {
       const impostor = Keypair.generate();
-      const configPda = deriveSbtConfig(0, program.programId);
+      const configPda = deriveSbtConfig(SbtType.HumanCapital, program.programId);
       try {
         await program.methods
-          .transferAuthority(0, impostor.publicKey)
+          .transferAuthority(SbtType.HumanCapital, impostor.publicKey)
           .accounts({ config: configPda, authority: impostor.publicKey })
           .signers([impostor])
           .rpc();
@@ -738,28 +818,133 @@ describe("sbt_program", () => {
     });
   });
 
+  describe("pause_program (sbt)", () => {
+    const eventId = toId("test-event-001");
+    const eventConfigPda = deriveEventConfig(eventId, program.programId);
+
+    it("pauses and unpauses Event type", async () => {
+      const configPda = deriveSbtConfig(SbtType.Event, program.programId);
+      await program.methods
+        .pauseProgram(SbtType.Event, true)
+        .accounts({ sbtConfig: configPda, authority: authority.publicKey })
+        .rpc();
+
+      const paused = await program.account.sbtConfig.fetch(configPda);
+      assert.isTrue(paused.paused);
+
+      // Minting should fail while paused
+      const r = Keypair.generate();
+      await airdrop(provider.connection, r.publicKey);
+      try {
+        await program.methods
+          .mintEventSbt("Org")
+          .accounts({
+            sbtConfig: configPda,
+            eventConfig: eventConfigPda,
+            sftMint: eventSftMint,
+            authority: authority.publicKey,
+            payer: authority.publicKey,
+            recipient: r.publicKey,
+            sbtRecord: deriveSbtRecord(eventId, 0, r.publicKey, program.programId),
+            participationRecord: deriveParticipation(SbtType.Event, eventId, 0, r.publicKey, program.programId),
+            tokenAccount: getToken2022ATA(eventSftMint, r.publicKey),
+            token2022Program: TOKEN_2022_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+          })
+          .rpc();
+        assert.fail("Expected ProgramPaused");
+      } catch (e: any) {
+        assert.ok(e.message.includes("ProgramPaused") || e.message.includes("2015"));
+      }
+
+      // Unpause
+      await program.methods
+        .pauseProgram(SbtType.Event, false)
+        .accounts({ sbtConfig: configPda, authority: authority.publicKey })
+        .rpc();
+      const unpaused = await program.account.sbtConfig.fetch(configPda);
+      assert.isFalse(unpaused.paused);
+    });
+  });
+
+  describe("batch_mint_event", () => {
+    const eventId = toId("test-event-001");
+    const eventConfigPda = deriveEventConfig(eventId, program.programId);
+
+    it("batch mints to 2 recipients via remaining_accounts", async () => {
+      const r1 = Keypair.generate();
+      const r2 = Keypair.generate();
+      await Promise.all([
+        airdrop(provider.connection, r1.publicKey),
+        airdrop(provider.connection, r2.publicKey),
+      ]);
+
+      const ata1 = getToken2022ATA(eventSftMint, r1.publicKey);
+      const ata2 = getToken2022ATA(eventSftMint, r2.publicKey);
+
+      await program.methods
+        .batchMintEvent()
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: eventConfigPda,
+          sftMint: eventSftMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .remainingAccounts([
+          { pubkey: r1.publicKey, isSigner: false, isWritable: false },
+          { pubkey: ata1, isSigner: false, isWritable: true },
+          { pubkey: r2.publicKey, isSigner: false, isWritable: false },
+          { pubkey: ata2, isSigner: false, isWritable: true },
+        ])
+        .rpc();
+
+      const bal1 = await provider.connection.getTokenAccountBalance(ata1);
+      const bal2 = await provider.connection.getTokenAccountBalance(ata2);
+      assert.equal(bal1.value.uiAmount, 1);
+      assert.equal(bal2.value.uiAmount, 1);
+    });
+  });
+
   describe("update_event metadata", () => {
     const eventId = toId("event-meta-upd-01");
     const eventPda = deriveEventConfig(eventId, program.programId);
+    let metaEventSftMint: PublicKey;
 
     before(async () => {
+      const sftMintKp = Keypair.generate();
       try {
         await program.methods
           .createEvent(eventId, "OldName", "OLD", "https://old.json")
           .accounts({
             sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
             eventConfig: eventPda,
+            sftMint: sftMintKp.publicKey,
             authority: authority.publicKey,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           })
+          .signers([sftMintKp])
           .rpc();
       } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
+      const cfg = await program.account.eventConfig.fetch(eventPda);
+      metaEventSftMint = cfg.sftMint;
     });
 
     it("updates name, symbol, uri", async () => {
       await program.methods
         .updateEvent(true, "NewName", "NEW", "https://new.json")
-        .accounts({ eventConfig: eventPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: eventPda,
+          sftMint: metaEventSftMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
       const cfg = await program.account.eventConfig.fetch(eventPda);
       assert.equal(cfg.name, "NewName");
@@ -771,7 +956,13 @@ describe("sbt_program", () => {
     it("passes null to keep existing values", async () => {
       await program.methods
         .updateEvent(false, null, null, null)
-        .accounts({ eventConfig: eventPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: eventPda,
+          sftMint: metaEventSftMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
       const cfg = await program.account.eventConfig.fetch(eventPda);
       assert.equal(cfg.name, "NewName"); // unchanged from previous test
@@ -779,7 +970,13 @@ describe("sbt_program", () => {
       // restore
       await program.methods
         .updateEvent(true, null, null, null)
-        .accounts({ eventConfig: eventPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: eventPda,
+          sftMint: metaEventSftMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
     });
   });
@@ -787,25 +984,48 @@ describe("sbt_program", () => {
   describe("update_challenge metadata", () => {
     const cid = toId("challenge-meta-01");
     const cPda = deriveChallengeConfig(cid, program.programId);
+    let metaAccMint: PublicKey;
+    let metaMisMint: PublicKey;
+    let metaComMint: PublicKey;
 
     before(async () => {
+      const m1 = Keypair.generate(), m2 = Keypair.generate(), m3 = Keypair.generate();
       try {
         await program.methods
           .createChallenge(cid, "OldC", "OC", "https://a.json", "https://b.json", "https://c.json", 2)
           .accounts({
-            sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+            sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+            sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
             challengeConfig: cPda,
+            sftAcceptedMint: m1.publicKey,
+            sftMissionMint: m2.publicKey,
+            sftCompleteMint: m3.publicKey,
             authority: authority.publicKey,
+            token2022Program: TOKEN_2022_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           })
+          .signers([m1, m2, m3])
           .rpc();
       } catch (e: any) { if (!e.message?.includes("already in use")) throw e; }
+      const cfg = await program.account.challengeConfig.fetch(cPda);
+      metaAccMint = cfg.sftAcceptedMint;
+      metaMisMint = cfg.sftMissionMint;
+      metaComMint = cfg.sftCompleteMint;
     });
 
     it("updates name and URIs", async () => {
       await program.methods
         .updateChallenge(true, "NewC", "NC", "https://a2.json", "https://b2.json", "https://c2.json")
-        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
+          challengeConfig: cPda,
+          sftAcceptedMint: metaAccMint,
+          sftMissionMint: metaMisMint,
+          sftCompleteMint: metaComMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
       const cfg = await program.account.challengeConfig.fetch(cPda);
       assert.equal(cfg.name, "NewC");
@@ -817,7 +1037,16 @@ describe("sbt_program", () => {
     it("passes null to keep existing values", async () => {
       await program.methods
         .updateChallenge(false, null, null, null, null, null)
-        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
+          challengeConfig: cPda,
+          sftAcceptedMint: metaAccMint,
+          sftMissionMint: metaMisMint,
+          sftCompleteMint: metaComMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
       const cfg = await program.account.challengeConfig.fetch(cPda);
       assert.equal(cfg.name, "NewC"); // unchanged
@@ -825,7 +1054,16 @@ describe("sbt_program", () => {
       // restore
       await program.methods
         .updateChallenge(true, null, null, null, null, null)
-        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
+          challengeConfig: cPda,
+          sftAcceptedMint: metaAccMint,
+          sftMissionMint: metaMisMint,
+          sftCompleteMint: metaComMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
     });
   });
@@ -834,19 +1072,31 @@ describe("sbt_program", () => {
     it("authority can close an inactive event", async () => {
       const eid = toId("close-event-001");
       const ePda = deriveEventConfig(eid, program.programId);
+      const sftMintKp = Keypair.generate();
       await program.methods
         .createEvent(eid, "CloseMe", "CL", "https://close.json")
         .accounts({
           sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
           eventConfig: ePda,
+          sftMint: sftMintKp.publicKey,
           authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
+        .signers([sftMintKp])
         .rpc();
+
+      const cfg = await program.account.eventConfig.fetch(ePda);
       // deactivate
       await program.methods
         .updateEvent(false, null, null, null)
-        .accounts({ eventConfig: ePda, authority: authority.publicKey })
+        .accounts({
+          sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
+          eventConfig: ePda,
+          sftMint: cfg.sftMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
       // close
       await program.methods
@@ -860,14 +1110,18 @@ describe("sbt_program", () => {
     it("Fail: cannot close an active event", async () => {
       const eid = toId("close-active-evt");
       const ePda = deriveEventConfig(eid, program.programId);
+      const sftMintKp = Keypair.generate();
       await program.methods
         .createEvent(eid, "Active", "ACT", "https://active.json")
         .accounts({
           sbtConfig: deriveSbtConfig(SbtType.Event, program.programId),
           eventConfig: ePda,
+          sftMint: sftMintKp.publicKey,
           authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
+        .signers([sftMintKp])
         .rpc();
       try {
         await program.methods
@@ -888,18 +1142,36 @@ describe("sbt_program", () => {
     it("authority can close an inactive challenge", async () => {
       const cid = toId("close-chal-001");
       const cPda = deriveChallengeConfig(cid, program.programId);
+      const m1 = Keypair.generate(), m2 = Keypair.generate(), m3 = Keypair.generate();
       await program.methods
         .createChallenge(cid, "CloseChallenge", "CC", "https://a.json", "https://b.json", "https://c.json", 2)
         .accounts({
-          sbtConfig: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
           challengeConfig: cPda,
+          sftAcceptedMint: m1.publicKey,
+          sftMissionMint: m2.publicKey,
+          sftCompleteMint: m3.publicKey,
           authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })
+        .signers([m1, m2, m3])
         .rpc();
+
+      const cfg = await program.account.challengeConfig.fetch(cPda);
       await program.methods
         .updateChallenge(false, null, null, null, null, null)
-        .accounts({ challengeConfig: cPda, authority: authority.publicKey })
+        .accounts({
+          sbtConfigAccepted: deriveSbtConfig(SbtType.ChallengeAccepted, program.programId),
+          sbtConfigMission: deriveSbtConfig(SbtType.ChallengeMission, program.programId),
+          challengeConfig: cPda,
+          sftAcceptedMint: cfg.sftAcceptedMint,
+          sftMissionMint: cfg.sftMissionMint,
+          sftCompleteMint: cfg.sftCompleteMint,
+          authority: authority.publicKey,
+          token2022Program: TOKEN_2022_PROGRAM_ID,
+        })
         .rpc();
       await program.methods
         .closeChallenge()

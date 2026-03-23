@@ -28,6 +28,8 @@ pub fn handler(ctx: Context<MintRwa>, challenge_id: [u8; 32]) -> Result<()> {
     issuance.challenge_id = challenge_id;
     issuance.user = ctx.accounts.recipient.key();
     issuance.minted_at = now;
+    issuance.is_used = false;
+    issuance.used_at = 0;
     issuance.bump = ctx.bumps.rwa_issuance;
 
     ctx.accounts.rwa_config.participant_count = ctx.accounts.rwa_config.participant_count

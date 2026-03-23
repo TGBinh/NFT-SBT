@@ -1,17 +1,19 @@
 /**
  * mint-nft.ts
  * ──────────────────────────────────────────────────────────────
- * Mints a new NFT on Solana Devnet using the deployed nft_program.
+ * Demonstrates the RWA SFT flow on Solana Devnet using nft_program:
+ *   1. initializeConfig(0)         — create NftConfig PDA
+ *   2. createRwaMint(challengeId)  — create shared SFT mint + RwaConfig PDA
+ *   3. mintRwa(challengeId)        — mint 1 token to recipient's ATA + RwaIssuance PDA
  *
  * Usage:
- *   yarn mint:nft
+ *   yarn mint:nft [RECIPIENT_PUBKEY]
  *   # or
- *   ts-node scripts/mint-nft.ts
+ *   ts-node scripts/mint-nft.ts [RECIPIENT_PUBKEY]
  *
  * Prerequisites:
- *   - nft_program deployed to devnet
- *   - ANCHOR_WALLET env var pointing to your keypair JSON file
- *     (defaults to ~/.config/solana/id.json)
+ *   - nft_program deployed to devnet (yarn deploy)
+ *   - ANCHOR_WALLET set, or ~/.config/solana/id.json exists
  */
 
 import * as anchor from "@coral-xyz/anchor";
@@ -25,7 +27,7 @@ import {
   clusterApiUrl,
 } from "@solana/web3.js";
 import {
-  getAssociatedTokenAddress,
+  getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -37,6 +39,48 @@ const METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );
 
+// ── Seeds ──────────────────────────────────────────────────────
+const NFT_CONFIG_SEED = Buffer.from("nft_config");
+const RWA_CONFIG_SEED = Buffer.from("rwa_config");
+const RWA_ISSUANCE_SEED = Buffer.from("rwa_issuance");
+
+// ── RWA configuration — edit before minting ───────────────────
+const RWA_CONFIG = {
+  name: "Example RWA Token",
+  symbol: "RWA",
+  uri: "https://example.com/rwa-metadata.json",
+  royalty: 500, // 500 basis points = 5%
+};
+
+// ── PDA helpers ───────────────────────────────────────────────
+function deriveNftConfigPDA(collectionType: number, programId: PublicKey): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [NFT_CONFIG_SEED, Buffer.from([collectionType])],
+    programId
+  );
+  return pda;
+}
+
+function deriveRwaConfigPDA(challengeId: Buffer, programId: PublicKey): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [RWA_CONFIG_SEED, challengeId],
+    programId
+  );
+  return pda;
+}
+
+function deriveRwaIssuancePDA(
+  challengeId: Buffer,
+  recipient: PublicKey,
+  programId: PublicKey
+): PublicKey {
+  const [pda] = PublicKey.findProgramAddressSync(
+    [RWA_ISSUANCE_SEED, challengeId, recipient.toBuffer()],
+    programId
+  );
+  return pda;
+}
+
 function deriveMetadataPDA(mint: PublicKey): PublicKey {
   const [pda] = PublicKey.findProgramAddressSync(
     [Buffer.from("metadata"), METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer()],
@@ -45,37 +89,15 @@ function deriveMetadataPDA(mint: PublicKey): PublicKey {
   return pda;
 }
 
-function deriveMasterEditionPDA(mint: PublicKey): PublicKey {
-  const [pda] = PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("metadata"),
-      METADATA_PROGRAM_ID.toBuffer(),
-      mint.toBuffer(),
-      Buffer.from("edition"),
-    ],
-    METADATA_PROGRAM_ID
-  );
-  return pda;
-}
-
-// ── NFT configuration (edit these values) ─────────────────────
-const NFT_CONFIG = {
-  name: "Example NFT",
-  symbol: "EXNFT",
-  uri: "https://example.com/nft-metadata.json", // Replace with your IPFS/Arweave URI
-  royalty: 500, // 500 basis points = 5%
-};
-
 // ─────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
   console.log("═══════════════════════════════════════════════════");
-  console.log("   Mint NFT Script — Solana Devnet");
+  console.log("   Mint RWA SFT Script — Solana Devnet");
   console.log("═══════════════════════════════════════════════════\n");
 
   // ── 1. Setup provider ──────────────────────────────────────
   const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
-  // Load wallet from env or default path
   const walletPath =
     process.env.ANCHOR_WALLET ||
     path.join(process.env.HOME || "~", ".config", "solana", "id.json");
@@ -92,9 +114,24 @@ async function main(): Promise<void> {
   });
   anchor.setProvider(provider);
 
-  console.log(`  Wallet:  ${wallet.publicKey.toBase58()}`);
+  console.log(`  Authority: ${wallet.publicKey.toBase58()}`);
   const balance = await connection.getBalance(wallet.publicKey);
-  console.log(`  Balance: ${(balance / 1e9).toFixed(4)} SOL`);
+  console.log(`  Balance:   ${(balance / 1e9).toFixed(4)} SOL`);
+
+  // Resolve recipient
+  let recipientPubkey: PublicKey;
+  const recipientArg = process.argv[2];
+  if (recipientArg) {
+    try {
+      recipientPubkey = new PublicKey(recipientArg);
+      console.log(`  Recipient: ${recipientPubkey.toBase58()} (from CLI arg)`);
+    } catch {
+      throw new Error(`Invalid recipient public key: ${recipientArg}`);
+    }
+  } else {
+    recipientPubkey = wallet.publicKey;
+    console.log(`  Recipient: ${recipientPubkey.toBase58()} (defaulting to authority)`);
+  }
 
   // ── 2. Load IDL and program ────────────────────────────────
   const idlPath = path.resolve(__dirname, "../target/idl/nft_program.json");
@@ -103,7 +140,6 @@ async function main(): Promise<void> {
   }
   const idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
 
-  // Read program ID from target/deploy keypair
   const programKeypairPath = path.resolve(
     __dirname,
     "../target/deploy/nft_program-keypair.json"
@@ -114,90 +150,140 @@ async function main(): Promise<void> {
   const programKp = Keypair.fromSecretKey(Uint8Array.from(programKpData));
   const programId = programKp.publicKey;
 
-  const program = new Program(idl, programId, provider);
-  console.log(`  Program: ${programId.toBase58()}\n`);
+  idl.address = programId.toBase58();
+  const program = new Program(idl, provider);
+  console.log(`  Program:   ${programId.toBase58()}\n`);
 
-  // ── 3. Derive config PDA ───────────────────────────────────
-  const [configPDA] = PublicKey.findProgramAddressSync(
-    [Buffer.from("nft_config")],
-    programId
-  );
+  // ── 3. NftConfig PDA (collection_type=0 for RWA) ──────────
+  const nftConfigPDA = deriveNftConfigPDA(0, programId);
 
-  // ── 4. Check / initialize config ──────────────────────────
   try {
-    await (program.account as any).nftConfig.fetch(configPDA);
-    console.log("  Config PDA already initialized:", configPDA.toBase58());
+    await (program.account as any).nftConfig.fetch(nftConfigPDA);
+    console.log("  NftConfig already initialized:", nftConfigPDA.toBase58());
   } catch {
-    console.log("  Initializing Config PDA...");
+    console.log("  Initializing NftConfig (type=0)...");
     await (program.methods as any)
-      .initializeConfig()
+      .initializeConfig(0)
       .accounts({
-        config: configPDA,
+        config: nftConfigPDA,
         authority: wallet.publicKey,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
-    console.log("  Config PDA initialized:", configPDA.toBase58());
+    console.log("  NftConfig initialized:", nftConfigPDA.toBase58());
   }
 
-  // ── 5. Generate mint keypair ───────────────────────────────
-  const mintKeypair = Keypair.generate();
-  console.log(`  New Mint Keypair: ${mintKeypair.publicKey.toBase58()}`);
+  // ── 4. Create shared RWA SFT mint ─────────────────────────
+  // challengeId: 32-byte array (use a fixed demo value here)
+  const challengeId = Buffer.alloc(32, 0);
+  challengeId.writeUInt32BE(1, 28); // demo: challenge #1
 
-  // ── 6. Derive PDAs ─────────────────────────────────────────
+  const rwaConfigPDA = deriveRwaConfigPDA(challengeId, programId);
+  const mintKeypair = Keypair.generate();
   const metadata = deriveMetadataPDA(mintKeypair.publicKey);
-  const masterEdition = deriveMasterEditionPDA(mintKeypair.publicKey);
-  const tokenAccount = await getAssociatedTokenAddress(
-    mintKeypair.publicKey,
-    wallet.publicKey
+
+  console.log(`  Challenge ID: ${challengeId.toString("hex")}`);
+  console.log(`  RwaConfig PDA: ${rwaConfigPDA.toBase58()}`);
+  console.log(`  Shared Mint:   ${mintKeypair.publicKey.toBase58()}`);
+  console.log(`  Metadata PDA:  ${metadata.toBase58()}`);
+
+  let rwaSftMint: PublicKey;
+  try {
+    const existingConfig = await (program.account as any).rwaConfig.fetch(rwaConfigPDA);
+    rwaSftMint = existingConfig.sftMint;
+    console.log(`\n  RwaConfig already exists. Shared mint: ${rwaSftMint.toBase58()}`);
+  } catch {
+    console.log("\n  Creating RWA SFT mint...");
+    console.log(`  Name:    ${RWA_CONFIG.name}`);
+    console.log(`  Symbol:  ${RWA_CONFIG.symbol}`);
+    console.log(`  URI:     ${RWA_CONFIG.uri}`);
+    console.log(`  Royalty: ${RWA_CONFIG.royalty / 100}%`);
+
+    await (program.methods as any)
+      .createRwaMint(
+        Array.from(challengeId),
+        RWA_CONFIG.name,
+        RWA_CONFIG.symbol,
+        RWA_CONFIG.uri,
+        RWA_CONFIG.royalty
+      )
+      .accounts({
+        nftConfig: nftConfigPDA,
+        rwaConfig: rwaConfigPDA,
+        mint: mintKeypair.publicKey,
+        metadata,
+        tokenMetadataProgram: METADATA_PROGRAM_ID,
+        authority: wallet.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
+      })
+      .signers([mintKeypair])
+      .rpc();
+
+    rwaSftMint = mintKeypair.publicKey;
+    console.log("  RWA SFT mint created:", rwaSftMint.toBase58());
+  }
+
+  // ── 5. Mint RWA token to recipient ────────────────────────
+  const rwaIssuancePDA = deriveRwaIssuancePDA(challengeId, recipientPubkey, programId);
+  const tokenAccount = getAssociatedTokenAddressSync(
+    rwaSftMint,
+    recipientPubkey,
+    false,
+    TOKEN_PROGRAM_ID
   );
 
-  console.log(`  Metadata PDA:     ${metadata.toBase58()}`);
-  console.log(`  Master Edition:   ${masterEdition.toBase58()}`);
-  console.log(`  Token Account:    ${tokenAccount.toBase58()}`);
-
-  // ── 7. Mint NFT ────────────────────────────────────────────
-  console.log("\n  Minting NFT...");
-  console.log(`  Name:    ${NFT_CONFIG.name}`);
-  console.log(`  Symbol:  ${NFT_CONFIG.symbol}`);
-  console.log(`  URI:     ${NFT_CONFIG.uri}`);
-  console.log(`  Royalty: ${NFT_CONFIG.royalty / 100}%`);
+  console.log(`\n  Minting RWA token to recipient...`);
+  console.log(`  RwaIssuance PDA: ${rwaIssuancePDA.toBase58()}`);
+  console.log(`  Token Account:   ${tokenAccount.toBase58()}`);
 
   const tx = await (program.methods as any)
-    .mintNft(NFT_CONFIG.name, NFT_CONFIG.symbol, NFT_CONFIG.uri, NFT_CONFIG.royalty)
+    .mintRwa(Array.from(challengeId))
     .accounts({
-      config: configPDA,
-      authority: wallet.publicKey,
-      payer: wallet.publicKey,
-      mint: mintKeypair.publicKey,
+      nftConfig: nftConfigPDA,
+      rwaConfig: rwaConfigPDA,
+      mint: rwaSftMint,
+      rwaIssuance: rwaIssuancePDA,
       tokenAccount,
-      metadata,
-      masterEdition,
-      tokenMetadataProgram: METADATA_PROGRAM_ID,
+      authority: wallet.publicKey,
+      recipient: recipientPubkey,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
       rent: SYSVAR_RENT_PUBKEY,
     })
-    .signers([mintKeypair])
     .rpc();
 
-  // ── 8. Output results ──────────────────────────────────────
+  // ── 6. Verify results ──────────────────────────────────────
+  const issuance = await (program.account as any).rwaIssuance.fetch(rwaIssuancePDA);
+  const tokenAccountInfo = await connection.getParsedAccountInfo(tokenAccount);
+  const parsedToken = (tokenAccountInfo.value?.data as any)?.parsed;
+  const tokenBalance: number = parsedToken?.info?.tokenAmount?.uiAmount ?? -1;
+
   console.log("\n═══════════════════════════════════════════════════");
-  console.log("   NFT Minted Successfully!");
+  console.log("   RWA SFT Minted Successfully!");
   console.log("═══════════════════════════════════════════════════");
-  console.log(`  NFT Mint Address : ${mintKeypair.publicKey.toBase58()}`);
-  console.log(`  Metadata PDA     : ${metadata.toBase58()}`);
-  console.log(`  Master Edition   : ${masterEdition.toBase58()}`);
-  console.log(`  Token Account    : ${tokenAccount.toBase58()}`);
-  console.log(`  Transaction      : ${tx}`);
+  console.log(`  Shared Mint    : ${rwaSftMint.toBase58()}`);
+  console.log(`  Recipient      : ${recipientPubkey.toBase58()}`);
+  console.log(`  Token Account  : ${tokenAccount.toBase58()}`);
+  console.log(`  RwaIssuance    : ${rwaIssuancePDA.toBase58()}`);
+  console.log(`  Transaction    : ${tx}`);
+  console.log();
+  console.log("  -- On-chain RwaIssuance --");
+  console.log(`  User       : ${issuance.user.toBase58()}`);
+  console.log(`  Minted At  : ${new Date(issuance.mintedAt.toNumber() * 1000).toISOString()}`);
+  console.log(`  Is Used    : ${issuance.isUsed}`);
+  console.log();
+  console.log("  -- Token Verification --");
+  console.log(`  Balance    : ${tokenBalance} (expected: 1)`);
   console.log(
-    `  Explorer         : https://explorer.solana.com/tx/${tx}?cluster=devnet`
+    `\n  Explorer: https://explorer.solana.com/tx/${tx}?cluster=devnet`
   );
   console.log(
-    `  NFT Explorer     : https://explorer.solana.com/address/${mintKeypair.publicKey.toBase58()}?cluster=devnet`
+    `  Mint:     https://explorer.solana.com/address/${rwaSftMint.toBase58()}?cluster=devnet`
   );
-  console.log("\n  Save the Mint Address — you'll need it to transfer or verify.");
   console.log();
 }
 

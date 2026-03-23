@@ -2,11 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, CloseAccount, Mint, Token, TokenAccount};
 use crate::{errors::NftError, state::*};
 
-pub fn handler(ctx: Context<BurnRwa>) -> Result<()> {
-    require!(
-        ctx.accounts.user_token_account.amount >= 1,
-        NftError::TokenNotOwned
-    );
+pub fn handler(ctx: Context<BurnRwa>, challenge_id: [u8; 32]) -> Result<()> {
+    require!(ctx.accounts.user_token_account.amount >= 1, NftError::TokenNotOwned);
 
     token::burn(
         CpiContext::new(
@@ -31,23 +28,32 @@ pub fn handler(ctx: Context<BurnRwa>) -> Result<()> {
         ),
     )?;
 
-    // RwaRecord is closed by Anchor `close` constraint — rent returned to user
-    msg!("RWA NFT burned. Mint: {}", ctx.accounts.mint.key());
+    // rwa_issuance closed by Anchor `close` constraint — rent returned to user
+    msg!("RWA SFT burned. Challenge: {:?}", challenge_id);
     Ok(())
 }
 
 #[derive(Accounts)]
+#[instruction(challenge_id: [u8; 32])]
 pub struct BurnRwa<'info> {
     #[account(
         mut,
-        seeds = [RWA_RECORD_SEED, mint.key().as_ref()],
-        bump = rwa_record.bump,
-        constraint = rwa_record.mint == mint.key() @ NftError::InvalidMint,
+        seeds = [RWA_ISSUANCE_SEED, &challenge_id, user.key().as_ref()],
+        bump = rwa_issuance.bump,
         close = user,
     )]
-    pub rwa_record: Account<'info, RwaRecord>,
+    pub rwa_issuance: Account<'info, RwaIssuance>,
 
-    #[account(mut)]
+    #[account(
+        seeds = [RWA_CONFIG_SEED, &challenge_id],
+        bump = rwa_config.bump,
+    )]
+    pub rwa_config: Account<'info, RwaConfig>,
+
+    #[account(
+        mut,
+        constraint = mint.key() == rwa_config.sft_mint @ NftError::MintNotCreated
+    )]
     pub mint: Account<'info, Mint>,
 
     #[account(
