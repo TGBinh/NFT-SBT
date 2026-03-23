@@ -517,3 +517,65 @@ Admin wallet
 ```
 
 **Lưu ý về `anchor` 0.32:** Constructor `new Program(idl, provider)` — program ID phải được set vào `idl.address` trước. Không còn dùng cú pháp `new Program(idl, programId, provider)` nữa.
+
+---
+
+## 13. Lỗi Build Đã Biết & Cách Fix
+
+### Bug: `solana-zk-token-sdk 3.1.11` không compile được
+
+**Triệu chứng:** `anchor build` báo lỗi:
+```
+error[E0412]: cannot find type `PedersenCommitment` in this scope
+  --> src/instruction/transfer/with_fee.rs:62:65
+error[E0425]: cannot find value `MAX_FEE_BASIS_POINTS` in this scope
+error[E0433]: failed to resolve: use of undeclared type `Pedersen`
+```
+
+**Nguyên nhân gốc:**
+
+Đây là bug trong crate `solana-zk-token-sdk 3.1.11` do Anza publish. Hai static variable trong `with_fee.rs` thiếu attribute `#[cfg(not(target_os = "solana"))]`, khiến compiler không tìm thấy các type đã được guard bởi cfg đó khi compile cho SBF target.
+
+Dependency chain dẫn đến crate này:
+```
+anchor-spl 0.32.1
+  → spl-token-metadata-interface 0.3.4
+    → spl-pod 0.2.3
+      → solana-zk-token-sdk >= 1.18.2   ← không có upper bound
+                                          → cargo resolved: 3.1.11 (buggy)
+```
+
+Lỗi xuất hiện vì `anchor-spl 0.32.1` được viết cho Agave 2.x, trong khi Agave 3.x publish crate này với bug chưa được fix.
+
+**Cách fix đã áp dụng (trong repo này):**
+
+Vendor crate vào `vendor/solana-zk-token-sdk/` và dùng `[patch.crates-io]` trong workspace `Cargo.toml`. Hai thay đổi cụ thể trong vendor:
+
+1. `src/instruction/transfer/with_fee.rs` — thêm `#[cfg(not(target_os = "solana"))]` trước 2 static bị thiếu
+2. `src/sigma_proofs/errors.rs` — thêm `#![allow(dead_code)]` vì các error struct không dùng đến sẽ bị `-D warnings` của Anchor IDL build biến thành error
+
+**Khi nào bỏ workaround:** Khi Anza publish `solana-zk-token-sdk 3.1.12+` với bug đã fix, xóa thư mục `vendor/` và xóa block `[patch.crates-io]` trong `Cargo.toml`.
+
+---
+
+### Lưu Ý Môi Trường Build
+
+**PATH phải có Agave bin mỗi lần mở terminal mới:**
+```bash
+export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+```
+Thêm dòng này vào `~/.bashrc` để không cần gõ lại.
+
+**Anchor 0.32.1 + Agave 3.x = không chính thức tương thích.** Anchor 0.32.1 được build nhắm vào Agave 2.x. Agave 3.x hoạt động được (sau workaround trên) nhưng nếu gặp thêm lỗi dependency lạ, kiểm tra bằng:
+```bash
+# Trace dependency chain của bất kỳ crate nào
+cargo tree -p <crate-name> --depth 3
+```
+
+**`cargo clean` không xóa registry cache** — nếu cần reset hoàn toàn:
+```bash
+cargo clean                          # xóa target/
+rm -rf ~/.cargo/registry/cache/      # xóa registry cache (re-download)
+```
+
+**Sau khi clone repo lần đầu**, không cần làm gì thêm — `vendor/` đã được commit, `[patch.crates-io]` tự động được áp dụng khi chạy `anchor build`.
