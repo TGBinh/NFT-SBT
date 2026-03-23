@@ -32,4 +32,8 @@ pub enum SbtError {
     InvalidTotalMissions,
     #[msg("Event or challenge is still active — deactivate it first")]
     StillActive,
+    #[msg("Program is paused — contact admin")]
+    ProgramPaused,
+    #[msg("SFT mint has not been created for this collection — call create_event or create_challenge first")]
+    MintNotCreated,
 }

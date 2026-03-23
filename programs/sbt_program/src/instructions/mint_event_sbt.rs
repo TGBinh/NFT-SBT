@@ -1,38 +1,34 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_2022::Token2022};
-use crate::{errors::SbtError, state::*, token_utils::mint_sbt_token};
+use crate::{errors::SbtError, state::*, token_utils::mint_sft_to_user};
 
-pub fn handler(ctx: Context<MintEventSbt>, name: String, issuer: String) -> Result<()> {
-    require!(name.len() <= 32, SbtError::NameTooLong);
+pub fn handler(ctx: Context<MintEventSbt>, issuer: String) -> Result<()> {
     require!(issuer.len() <= 32, SbtError::IssuerTooLong);
     require!(ctx.accounts.event_config.active, SbtError::NotActive);
+    require!(!ctx.accounts.sbt_config.paused, SbtError::ProgramPaused);
     require_keys_eq!(ctx.accounts.sbt_config.authority, ctx.accounts.authority.key(), SbtError::Unauthorized);
 
-    let uri = ctx.accounts.event_config.uri.clone();
-    let event_id = ctx.accounts.event_config.event_id;
-
-    mint_sbt_token(
-        &ctx.accounts.mint.to_account_info(),
+    mint_sft_to_user(
+        &ctx.accounts.sft_mint.to_account_info(),
         &ctx.accounts.token_account.to_account_info(),
         &ctx.accounts.authority.to_account_info(),
         &ctx.accounts.recipient.to_account_info(),
         &ctx.accounts.sbt_config.to_account_info(),
+        1u8,
+        ctx.accounts.sbt_config.bump,
         &ctx.accounts.token_2022_program.to_account_info(),
         &ctx.accounts.associated_token_program.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
-        &ctx.accounts.rent.to_account_info(),
     )?;
 
     let now = Clock::get()?.unix_timestamp;
+    let event_id = ctx.accounts.event_config.event_id;
+
     let record = &mut ctx.accounts.sbt_record;
     record.owner = ctx.accounts.recipient.key();
-    record.mint = ctx.accounts.mint.key();
     record.sbt_type = 1;
-    record.uri = uri;
-    record.event_id = event_id;
-    record.challenge_id = [0u8; 32];
+    record.collection_id = event_id;
     record.mission_index = 0;
-    record.name = name;
     record.issuer = issuer;
     record.issued_at = now;
     record.revoked = false;
@@ -66,6 +62,13 @@ pub struct MintEventSbt<'info> {
     #[account(mut)]
     pub event_config: Account<'info, EventConfig>,
 
+    /// CHECK: shared SFT mint for this event
+    #[account(
+        mut,
+        constraint = sft_mint.key() == event_config.sft_mint @ SbtError::MintNotCreated
+    )]
+    pub sft_mint: UncheckedAccount<'info>,
+
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -79,7 +82,7 @@ pub struct MintEventSbt<'info> {
         init,
         payer = payer,
         space = 8 + SbtRecord::SPACE,
-        seeds = [SBT_RECORD_SEED, mint.key().as_ref()],
+        seeds = [SBT_RECORD_SEED, event_config.event_id.as_ref(), &[0u8], recipient.key().as_ref()],
         bump
     )]
     pub sbt_record: Account<'info, SbtRecord>,
@@ -88,22 +91,12 @@ pub struct MintEventSbt<'info> {
         init,
         payer = payer,
         space = 8 + ParticipationRecord::SPACE,
-        seeds = [
-            PARTICIPATION_SEED,
-            &[1u8],
-            event_config.event_id.as_ref(),
-            &[0u8],
-            recipient.key().as_ref()
-        ],
+        seeds = [PARTICIPATION_SEED, &[1u8], event_config.event_id.as_ref(), &[0u8], recipient.key().as_ref()],
         bump
     )]
     pub participation_record: Account<'info, ParticipationRecord>,
 
-    /// CHECK: initialized manually
-    #[account(mut)]
-    pub mint: Signer<'info>,
-
-    /// CHECK: created via ATA CPI
+    /// CHECK: ATA for recipient, created by mint_sft_to_user
     #[account(mut)]
     pub token_account: UncheckedAccount<'info>,
 

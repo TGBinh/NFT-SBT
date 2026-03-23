@@ -1,42 +1,29 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{self, Burn, ThawAccount, Token2022};
-use crate::{errors::SbtError, state::*};
+use anchor_spl::token_2022::Token2022;
+use crate::{errors::SbtError, state::*, token_utils::revoke_sft_from_user};
 
-pub fn handler(ctx: Context<RevokeSbt>, sbt_type: u8) -> Result<()> {
+pub fn handler(ctx: Context<RevokeSbt>, sbt_type: u8, mission_index: u8) -> Result<()> {
     require_keys_eq!(ctx.accounts.sbt_config.authority, ctx.accounts.authority.key(), SbtError::Unauthorized);
     require!(!ctx.accounts.sbt_record.revoked, SbtError::AlreadyRevoked);
 
-    let config_bump = ctx.accounts.sbt_config.bump;
-    let pda_signer: &[&[u8]] = &[SBT_CONFIG_SEED, &[sbt_type], &[config_bump]];
-    let signer_seeds: &[&[&[u8]]] = &[pda_signer];
-
-    token_2022::thaw_account(CpiContext::new_with_signer(
-        ctx.accounts.token_2022_program.to_account_info(),
-        ThawAccount {
-            account: ctx.accounts.token_account.to_account_info(),
-            mint: ctx.accounts.mint.to_account_info(),
-            authority: ctx.accounts.sbt_config.to_account_info(),
-        },
-        signer_seeds,
-    ))?;
-
-    token_2022::burn(CpiContext::new_with_signer(
-        ctx.accounts.token_2022_program.to_account_info(),
-        Burn {
-            mint: ctx.accounts.mint.to_account_info(),
-            from: ctx.accounts.token_account.to_account_info(),
-            authority: ctx.accounts.sbt_config.to_account_info(),
-        },
-        signer_seeds,
-    ), 1)?;
+    revoke_sft_from_user(
+        &ctx.accounts.sft_mint.to_account_info(),
+        &ctx.accounts.token_account.to_account_info(),
+        &ctx.accounts.sbt_config.to_account_info(),
+        sbt_type,
+        ctx.accounts.sbt_config.bump,
+        &ctx.accounts.token_2022_program.to_account_info(),
+    )?;
 
     ctx.accounts.sbt_record.revoked = true;
-    msg!("SBT revoked. Mint: {}", ctx.accounts.mint.key());
+    msg!("SBT revoked for user: {} collection: {:?} mission_index: {}",
+        ctx.accounts.user.key(), ctx.accounts.sbt_record.collection_id, mission_index);
+
     Ok(())
 }
 
 #[derive(Accounts)]
-#[instruction(sbt_type: u8)]
+#[instruction(sbt_type: u8, mission_index: u8)]
 pub struct RevokeSbt<'info> {
     #[account(
         mut,
@@ -47,17 +34,20 @@ pub struct RevokeSbt<'info> {
 
     pub authority: Signer<'info>,
 
-    /// CHECK: validated via sbt_record seeds
-    #[account(mut)]
-    pub mint: UncheckedAccount<'info>,
+    /// CHECK: user whose SBT is being revoked
+    pub user: UncheckedAccount<'info>,
 
-    /// CHECK: thawed and burned in handler
+    /// CHECK: shared SFT mint
+    #[account(mut)]
+    pub sft_mint: UncheckedAccount<'info>,
+
+    /// CHECK: user's ATA for sft_mint
     #[account(mut)]
     pub token_account: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        seeds = [SBT_RECORD_SEED, mint.key().as_ref()],
+        seeds = [SBT_RECORD_SEED, sbt_record.collection_id.as_ref(), &[mission_index], user.key().as_ref()],
         bump = sbt_record.bump,
     )]
     pub sbt_record: Account<'info, SbtRecord>,

@@ -12,6 +12,8 @@ pub mod verify_sbt;
 pub mod transfer_authority;
 pub mod close_event;
 pub mod close_challenge;
+pub mod pause_program;
+pub mod batch_mint_event;
 
 pub use initialize_config::*;
 pub use create_event::*;
@@ -27,3 +29,5 @@ pub use verify_sbt::*;
 pub use transfer_authority::*;
 pub use close_event::*;
 pub use close_challenge::*;
+pub use pause_program::*;
+pub use batch_mint_event::*;

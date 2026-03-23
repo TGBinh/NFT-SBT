@@ -15,51 +15,24 @@ pub mod nft_program {
     pub fn initialize_config(ctx: Context<InitializeConfig>, collection_type: u8) -> Result<()> {
         instructions::initialize_config::handler(ctx, collection_type)
     }
-
-    pub fn create_rally(
-        ctx: Context<CreateRally>,
-        rally_id: [u8; 32],
-        name: String,
-        symbol: String,
-        uri_stamp: String,
-        uri_complete: String,
-        total_checkpoints: u8,
-    ) -> Result<()> {
+    pub fn create_rally(ctx: Context<CreateRally>, rally_id: [u8; 32], name: String, symbol: String, uri_stamp: String, uri_complete: String, total_checkpoints: u8) -> Result<()> {
         instructions::create_rally::handler(ctx, rally_id, name, symbol, uri_stamp, uri_complete, total_checkpoints)
     }
-
-    pub fn update_rally(
-        ctx: Context<UpdateRally>,
-        active: bool,
-        name: Option<String>,
-        symbol: Option<String>,
-        uri_stamp: Option<String>,
-        uri_complete: Option<String>,
-    ) -> Result<()> {
+    pub fn update_rally(ctx: Context<UpdateRally>, active: bool, name: Option<String>, symbol: Option<String>, uri_stamp: Option<String>, uri_complete: Option<String>) -> Result<()> {
         instructions::update_rally::handler(ctx, active, name, symbol, uri_stamp, uri_complete)
     }
-
-    pub fn mint_rwa(
-        ctx: Context<MintRwa>,
-        name: String,
-        symbol: String,
-        uri: String,
-        royalty: u16,
-        challenge_id: [u8; 32],
-    ) -> Result<()> {
-        instructions::mint_rwa::handler(ctx, name, symbol, uri, royalty, challenge_id)
+    pub fn create_rwa_mint(ctx: Context<CreateRwaMint>, challenge_id: [u8; 32], name: String, symbol: String, uri: String, royalty: u16) -> Result<()> {
+        instructions::create_rwa_mint::handler(ctx, challenge_id, name, symbol, uri, royalty)
     }
-
-    pub fn mint_stamp(
-        ctx: Context<MintStamp>,
-        checkpoint_index: u8,
-        name: String,
-        symbol: String,
-        royalty: u16,
-    ) -> Result<()> {
-        instructions::mint_stamp::handler(ctx, checkpoint_index, name, symbol, royalty)
+    pub fn create_stamp_mint(ctx: Context<CreateStampMint>, checkpoint_index: u8) -> Result<()> {
+        instructions::create_stamp_mint::handler(ctx, checkpoint_index)
     }
-
+    pub fn mint_rwa(ctx: Context<MintRwa>, challenge_id: [u8; 32]) -> Result<()> {
+        instructions::mint_rwa::handler(ctx, challenge_id)
+    }
+    pub fn mint_stamp(ctx: Context<MintStamp>, checkpoint_index: u8) -> Result<()> {
+        instructions::mint_stamp::handler(ctx, checkpoint_index)
+    }
     pub fn use_rwa(ctx: Context<UseRwa>) -> Result<()> {
         instructions::use_rwa::handler(ctx)
     }
@@ -74,5 +47,8 @@ pub mod nft_program {
     }
     pub fn close_rally(ctx: Context<CloseRally>) -> Result<()> {
         instructions::close_rally::handler(ctx)
+    }
+    pub fn pause_program(ctx: Context<PauseProgram>, collection_type: u8, paused: bool) -> Result<()> {
+        instructions::pause_program::handler(ctx, collection_type, paused)
     }
 }

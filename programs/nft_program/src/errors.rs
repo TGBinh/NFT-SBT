@@ -30,4 +30,8 @@ pub enum NftError {
     InvalidMint,
     #[msg("Rally is still active — deactivate it first")]
     StillActive,
+    #[msg("Program is paused — contact admin")]
+    ProgramPaused,
+    #[msg("SFT mint not created for this collection — call create_rwa_mint or create_stamp_mint first")]
+    MintNotCreated,
 }

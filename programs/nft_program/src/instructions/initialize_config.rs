@@ -6,6 +6,7 @@ pub fn handler(ctx: Context<InitializeConfig>, collection_type: u8) -> Result<()
     config.authority = ctx.accounts.authority.key();
     config.collection_type = collection_type;
     config.nft_count = 0;
+    config.paused = false;
     config.bump = ctx.bumps.config;
     msg!("NftConfig initialized. Type: {} Authority: {}", collection_type, config.authority);
     Ok(())

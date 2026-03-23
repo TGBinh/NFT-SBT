@@ -6,6 +6,7 @@ pub fn handler(ctx: Context<MintHumanCapital>, name: String, issuer: String, uri
     require!(name.len() <= 32, SbtError::NameTooLong);
     require!(issuer.len() <= 32, SbtError::IssuerTooLong);
     require!(uri.len() <= 200, SbtError::UriTooLong);
+    require!(!ctx.accounts.sbt_config.paused, SbtError::ProgramPaused);
     require_keys_eq!(ctx.accounts.sbt_config.authority, ctx.accounts.authority.key(), SbtError::Unauthorized);
 
     mint_sbt_token(
@@ -23,15 +24,14 @@ pub fn handler(ctx: Context<MintHumanCapital>, name: String, issuer: String, uri
     let zero_id = [0u8; 32];
     let now = Clock::get()?.unix_timestamp;
 
+    // HumanCapital uses mint pubkey bytes as collection_id (unique per user)
+    let mint_bytes = ctx.accounts.mint.key().to_bytes();
+
     let record = &mut ctx.accounts.sbt_record;
     record.owner = ctx.accounts.recipient.key();
-    record.mint = ctx.accounts.mint.key();
     record.sbt_type = 0;
-    record.uri = uri;
-    record.event_id = zero_id;
-    record.challenge_id = zero_id;
+    record.collection_id = mint_bytes;  // unique: mint pubkey as collection_id
     record.mission_index = 0;
-    record.name = name;
     record.issuer = issuer;
     record.issued_at = now;
     record.revoked = false;
@@ -73,7 +73,7 @@ pub struct MintHumanCapital<'info> {
         init,
         payer = payer,
         space = 8 + SbtRecord::SPACE,
-        seeds = [SBT_RECORD_SEED, mint.key().as_ref()],
+        seeds = [SBT_RECORD_SEED, mint.key().as_ref(), &[0u8], recipient.key().as_ref()],
         bump
     )]
     pub sbt_record: Account<'info, SbtRecord>,

@@ -14,11 +14,14 @@ pub struct ChallengeConfig {
     pub authority: Pubkey,
     pub participant_count: u64,
     pub active: bool,
+    pub sft_accepted_mint: Pubkey,
+    pub sft_mission_mint: Pubkey,
+    pub sft_complete_mint: Pubkey,
     pub bump: u8,
 }
 
 impl ChallengeConfig {
-    // 32 + (4+32) + (4+10) + (4+200)*3 + 1 + 32 + 8 + 1 + 1 = 737
+    // 32 + (4+32) + (4+10) + (4+200)*3 + 1 + 32 + 8 + 1 + 32*3 + 1 = 833
     pub const SPACE: usize =
-        32 + (4 + 32) + (4 + 10) + (4 + 200) * 3 + 1 + 32 + 8 + 1 + 1;
+        32 + (4 + 32) + (4 + 10) + (4 + 200) * 3 + 1 + 32 + 8 + 1 + 32 * 3 + 1;
 }

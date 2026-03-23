@@ -11,10 +11,11 @@ pub struct EventConfig {
     pub authority: Pubkey,
     pub participant_count: u64,
     pub active: bool,
+    pub sft_mint: Pubkey,
     pub bump: u8,
 }
 
 impl EventConfig {
-    // 32 + (4+32) + (4+10) + (4+200) + 32 + 8 + 1 + 1 = 328
-    pub const SPACE: usize = 32 + (4 + 32) + (4 + 10) + (4 + 200) + 32 + 8 + 1 + 1;
+    // 32 + (4+32) + (4+10) + (4+200) + 32 + 8 + 1 + 32 + 1 = 360
+    pub const SPACE: usize = 32 + (4 + 32) + (4 + 10) + (4 + 200) + 32 + 8 + 1 + 32 + 1;
 }

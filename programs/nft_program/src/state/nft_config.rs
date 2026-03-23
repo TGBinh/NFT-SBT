@@ -7,9 +7,10 @@ pub struct NftConfig {
     pub authority: Pubkey,
     pub collection_type: u8,
     pub nft_count: u64,
+    pub paused: bool,
     pub bump: u8,
 }
 
 impl NftConfig {
-    pub const SPACE: usize = 32 + 1 + 8 + 1; // 42
+    pub const SPACE: usize = 32 + 1 + 8 + 1 + 1; // 43
 }

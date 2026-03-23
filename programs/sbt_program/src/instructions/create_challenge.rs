@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use crate::{errors::SbtError, state::*};
+use anchor_spl::token_2022::Token2022;
+use crate::{errors::SbtError, state::*, token_utils::create_sft_mint};
 
 pub fn handler(
     ctx: Context<CreateChallenge>,
@@ -17,6 +18,51 @@ pub fn handler(
     require!(uri_mission.len() <= 200, SbtError::UriTooLong);
     require!(uri_complete.len() <= 200, SbtError::UriTooLong);
     require!(total_missions >= 1 && total_missions <= 254, SbtError::InvalidTotalMissions);
+    require_keys_eq!(
+        ctx.accounts.sbt_config_accepted.authority,
+        ctx.accounts.authority.key(),
+        SbtError::Unauthorized
+    );
+
+    let bump_2 = ctx.accounts.sbt_config_accepted.bump;
+    let bump_3 = ctx.accounts.sbt_config_mission.bump;
+    let sym = &symbol[..symbol.len().min(9)];
+
+    create_sft_mint(
+        &ctx.accounts.sft_accepted_mint.to_account_info(),
+        &ctx.accounts.authority.to_account_info(),
+        &ctx.accounts.sbt_config_accepted.to_account_info(),
+        2u8, bump_2,
+        format!("{} Accepted", name),
+        format!("{}A", sym),
+        uri_accepted.clone(),
+        &ctx.accounts.token_2022_program.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+    )?;
+
+    create_sft_mint(
+        &ctx.accounts.sft_mission_mint.to_account_info(),
+        &ctx.accounts.authority.to_account_info(),
+        &ctx.accounts.sbt_config_mission.to_account_info(),
+        3u8, bump_3,
+        format!("{} Mission", name),
+        format!("{}M", sym),
+        uri_mission.clone(),
+        &ctx.accounts.token_2022_program.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+    )?;
+
+    create_sft_mint(
+        &ctx.accounts.sft_complete_mint.to_account_info(),
+        &ctx.accounts.authority.to_account_info(),
+        &ctx.accounts.sbt_config_mission.to_account_info(),
+        3u8, bump_3,
+        format!("{} Complete", name),
+        format!("{}C", sym),
+        uri_complete.clone(),
+        &ctx.accounts.token_2022_program.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+    )?;
 
     let cfg = &mut ctx.accounts.challenge_config;
     cfg.challenge_id = challenge_id;
@@ -29,30 +75,55 @@ pub fn handler(
     cfg.authority = ctx.accounts.authority.key();
     cfg.participant_count = 0;
     cfg.active = true;
+    cfg.sft_accepted_mint = ctx.accounts.sft_accepted_mint.key();
+    cfg.sft_mission_mint = ctx.accounts.sft_mission_mint.key();
+    cfg.sft_complete_mint = ctx.accounts.sft_complete_mint.key();
     cfg.bump = ctx.bumps.challenge_config;
+
     Ok(())
 }
 
 #[derive(Accounts)]
 #[instruction(challenge_id: [u8; 32])]
 pub struct CreateChallenge<'info> {
+    // SbtConfig type=2 for ChallengeAccepted mint authority
     #[account(
         seeds = [SBT_CONFIG_SEED, &[2u8]],
-        bump = sbt_config.bump,
-        constraint = sbt_config.authority == authority.key() @ SbtError::Unauthorized
+        bump = sbt_config_accepted.bump,
     )]
-    pub sbt_config: Account<'info, SbtConfig>,
+    pub sbt_config_accepted: Account<'info, SbtConfig>,
+
+    // SbtConfig type=3 for ChallengeMission/Complete mint authority
+    #[account(
+        seeds = [SBT_CONFIG_SEED, &[3u8]],
+        bump = sbt_config_mission.bump,
+    )]
+    pub sbt_config_mission: Account<'info, SbtConfig>,
 
     #[account(
         init,
         payer = authority,
         space = 8 + ChallengeConfig::SPACE,
         seeds = [CHALLENGE_CONFIG_SEED, &challenge_id],
-        bump
+        bump,
     )]
     pub challenge_config: Account<'info, ChallengeConfig>,
 
+    /// CHECK: initialized manually
+    #[account(mut)]
+    pub sft_accepted_mint: Signer<'info>,
+
+    /// CHECK: initialized manually
+    #[account(mut)]
+    pub sft_mission_mint: Signer<'info>,
+
+    /// CHECK: initialized manually
+    #[account(mut)]
+    pub sft_complete_mint: Signer<'info>,
+
     #[account(mut)]
     pub authority: Signer<'info>,
+
+    pub token_2022_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
 }

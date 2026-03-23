@@ -21,59 +21,31 @@ pub mod sbt_program {
     pub fn create_event(ctx: Context<CreateEvent>, event_id: [u8; 32], name: String, symbol: String, uri: String) -> Result<()> {
         instructions::create_event::handler(ctx, event_id, name, symbol, uri)
     }
-    pub fn update_event(
-        ctx: Context<UpdateEvent>,
-        active: bool,
-        name: Option<String>,
-        symbol: Option<String>,
-        uri: Option<String>,
-    ) -> Result<()> {
+    pub fn update_event(ctx: Context<UpdateEvent>, active: bool, name: Option<String>, symbol: Option<String>, uri: Option<String>) -> Result<()> {
         instructions::update_event::handler(ctx, active, name, symbol, uri)
     }
-    pub fn create_challenge(
-        ctx: Context<CreateChallenge>,
-        challenge_id: [u8; 32],
-        name: String,
-        symbol: String,
-        uri_accepted: String,
-        uri_mission: String,
-        uri_complete: String,
-        total_missions: u8,
-    ) -> Result<()> {
+    pub fn create_challenge(ctx: Context<CreateChallenge>, challenge_id: [u8; 32], name: String, symbol: String, uri_accepted: String, uri_mission: String, uri_complete: String, total_missions: u8) -> Result<()> {
         instructions::create_challenge::handler(ctx, challenge_id, name, symbol, uri_accepted, uri_mission, uri_complete, total_missions)
     }
-    pub fn update_challenge(
-        ctx: Context<UpdateChallenge>,
-        active: bool,
-        name: Option<String>,
-        symbol: Option<String>,
-        uri_accepted: Option<String>,
-        uri_mission: Option<String>,
-        uri_complete: Option<String>,
-    ) -> Result<()> {
+    pub fn update_challenge(ctx: Context<UpdateChallenge>, active: bool, name: Option<String>, symbol: Option<String>, uri_accepted: Option<String>, uri_mission: Option<String>, uri_complete: Option<String>) -> Result<()> {
         instructions::update_challenge::handler(ctx, active, name, symbol, uri_accepted, uri_mission, uri_complete)
     }
     pub fn mint_human_capital(ctx: Context<MintHumanCapital>, name: String, issuer: String, uri: String) -> Result<()> {
         instructions::mint_human_capital::handler(ctx, name, issuer, uri)
     }
-    pub fn mint_event_sbt(ctx: Context<MintEventSbt>, name: String, issuer: String) -> Result<()> {
-        instructions::mint_event_sbt::handler(ctx, name, issuer)
+    pub fn mint_event_sbt(ctx: Context<MintEventSbt>, issuer: String) -> Result<()> {
+        instructions::mint_event_sbt::handler(ctx, issuer)
     }
-    pub fn mint_challenge_accepted(ctx: Context<MintChallengeAccepted>, name: String, issuer: String) -> Result<()> {
-        instructions::mint_challenge_accepted::handler(ctx, name, issuer)
+    pub fn mint_challenge_accepted(ctx: Context<MintChallengeAccepted>, issuer: String) -> Result<()> {
+        instructions::mint_challenge_accepted::handler(ctx, issuer)
     }
-    pub fn mint_challenge_mission(
-        ctx: Context<MintChallengeMission>,
-        mission_index: u8,
-        name: String,
-        issuer: String,
-    ) -> Result<()> {
-        instructions::mint_challenge_mission::handler(ctx, mission_index, name, issuer)
+    pub fn mint_challenge_mission(ctx: Context<MintChallengeMission>, mission_index: u8, issuer: String) -> Result<()> {
+        instructions::mint_challenge_mission::handler(ctx, mission_index, issuer)
     }
-    pub fn revoke_sbt(ctx: Context<RevokeSbt>, sbt_type: u8) -> Result<()> {
-        instructions::revoke_sbt::handler(ctx, sbt_type)
+    pub fn revoke_sbt(ctx: Context<RevokeSbt>, sbt_type: u8, mission_index: u8) -> Result<()> {
+        instructions::revoke_sbt::handler(ctx, sbt_type, mission_index)
     }
-    pub fn verify_sbt(ctx: Context<VerifySbt>) -> Result<()> {
+    pub fn verify_sbt(ctx: Context<VerifySbt>, collection_id: [u8; 32], mission_index: u8) -> Result<()> {
         instructions::verify_sbt::handler(ctx)
     }
     pub fn transfer_authority(ctx: Context<TransferAuthority>, sbt_type: u8, new_authority: Pubkey) -> Result<()> {
@@ -84,5 +56,11 @@ pub mod sbt_program {
     }
     pub fn close_challenge(ctx: Context<CloseChallenge>) -> Result<()> {
         instructions::close_challenge::handler(ctx)
+    }
+    pub fn pause_program(ctx: Context<PauseProgram>, sbt_type: u8, paused: bool) -> Result<()> {
+        instructions::pause_program::handler(ctx, sbt_type, paused)
+    }
+    pub fn batch_mint_event<'info>(ctx: Context<'_, '_, '_, 'info, BatchMintEvent<'info>>) -> Result<()> {
+        instructions::batch_mint_event::handler(ctx)
     }
 }

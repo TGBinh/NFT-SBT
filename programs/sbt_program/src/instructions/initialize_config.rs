@@ -6,6 +6,7 @@ pub fn handler(ctx: Context<InitializeConfig>, sbt_type: u8) -> Result<()> {
     config.authority = ctx.accounts.authority.key();
     config.sbt_type = sbt_type;
     config.sbt_count = 0;
+    config.paused = false;
     config.bump = ctx.bumps.config;
     msg!("SbtConfig initialized. Type: {} Authority: {}", sbt_type, config.authority);
     Ok(())
